@@ -106,6 +106,10 @@
 		{
 			"Name": "AllToolsets",
 			"Enabled": true
+		},
+		{
+			"Name": "VibeUE",
+			"Enabled": true
 		}
 	],
 	"EpicSampleNameHash": "1673045636"
