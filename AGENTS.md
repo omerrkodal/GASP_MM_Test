@@ -296,3 +296,5 @@ crash handler — MCP will hang; relaunch); fresh and small → the editor is fi
 <!-- END VibeUE -->
 
 <!-- Local build gotcha: The embedded terminal exits with Unreal; rebuild global Mover externally using Tools/RebuildGlobalMover.cmd. Use the project editor target plus -Plugin=<global Mover.uplugin>; the generic UnrealEditor target may return metadata-only success. UBT regenerates this project's temporary targets after Intermediate deletion. -->
+
+<!-- Chaos 5.8 gotcha: MakeImplicitObjectPtr is a global function template; use ::MakeImplicitObjectPtr<Chaos::FCapsule>, not Chaos::MakeImplicitObjectPtr. -->

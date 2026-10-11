@@ -34,6 +34,8 @@ For build diagnosis, `--plan-only` exports pending compile/link actions without 
 
 ## Horizontal prone source change: pending native build
 
+The first native compilation reported a namespace error in `ProneCapsuleUtils.cpp`. The construction call now uses `::MakeImplicitObjectPtr<Chaos::FCapsule>`, matching UE 5.8's global template declaration. This correction is installed globally and included in the saved patch; a successful rebuild is still required.
+
 The horizontal prone source has been installed in the global plugin but has not yet compiled or been checked in gameplay. The loaded editor DLL still contains the previous upright prone implementation. If compilation fails, preserve the build log for diagnosis; do not assume the feature is ready.
 
 The implementation keeps the pawn/root transform upright and rotates its live Chaos collision capsule along the pawn's forward axis. Its native floor, clearance, and movement queries account for that collision orientation.
