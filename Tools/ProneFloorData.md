@@ -8,30 +8,29 @@ Close Unreal and run `Tools/RebuildGlobalMover.cmd` as administrator from File E
 
 `Get Prone Floor Data` is a **pure C++ Blueprint node on CharacterMoverComponent**, under `Mover | Prone`. It reads cached simulation results and performs no traces. The user will wire it into `Update_FloorValues` and the Control Rig.
 
-The node returns **one Floor Data struct** with **Normal**, **Location**, and **Does Hit?**. There is no separate boolean Return Value and no Tip/Back/Combined output selection to wire in Blueprint. All selection happens in C++:
+The node exposes **Tip**, **Back**, and **Center** as separate native floor structs, each with **Normal**, **Location**, and **Does Hit?**. There is no separate boolean Return Value.
 
-| Tip valid | Back valid | Selected result |
-|---|---|---|
-| Yes | No | Tip normal and impact location. |
-| Yes | Yes | Normalized sum of both normals and midpoint of both impact locations. |
-| No | Yes | Back normal and impact location. |
-| No | No | Downward center probe normal and impact location if walkable. |
+| Output | Meaning |
+|---|---|
+| Tip | Walkable floor beneath the fixed front probe. |
+| Back | Walkable floor beneath the fixed rear probe. |
+| Center | Walkable floor beneath the capsule center; sampled even when either end hits. |
 
-The output uses native `FMoverFloorData` (Blueprint display name **Mover Floor Data**). This matches the fields of the project's `/Game/Blueprints/Data/S_FloorData`, but Unreal treats native and Blueprint-defined structs as different types. Split the native pin to get Normal/Location/Does Hit?, or use **Break Mover Floor Data**. If retaining `S_FloorData` variables, connect those fields to **Make S_FloorData**. The global plugin does not load or depend on the project struct asset.
+Each output uses native `FMoverFloorData` (Blueprint display name **Mover Floor Data**). This matches the fields of the project's `/Game/Blueprints/Data/S_FloorData`, but Unreal treats native and Blueprint-defined structs as different types. Split each native pin to get Normal/Location/Does Hit?, or use **Break Mover Floor Data**. If retaining `S_FloorData` variables, connect those fields to **Make S_FloorData**. The global plugin does not load or depend on the project struct asset.
 
-**Does Hit?** is true when at least one selected walkable sample exists while prone and grounded. The both-hit location is a calculated midpoint, not an additional collision hit. If all three probes miss, or outside prone/grounded state, Does Hit? is false, Normal is Mover's up direction, and Location is the updated component's position. That position is a fallback value, not a ground impact point. The Blueprint getter never initiates a floor query.
+Each **Does Hit?** is true only for that sample's valid walkable hit while prone and grounded. Missing samples return Does Hit? false, Mover's up direction, and the updated component's position. Outside prone/grounded state, all three samples are invalid. A missing sample's position is a fallback value, not a ground impact point. Center is an actual independent trace hit, not the midpoint of Tip and Back. The Blueprint getter never initiates a floor query.
 
-After rebuilding, **Refresh Node** on existing Get Prone Floor Data nodes. Earlier separate outputs have been replaced by one struct return, so old pin connections need manual rewiring. The user owns Blueprint implementation; the `S_FloorData` asset and function graphs were not modified for this output change.
+After rebuilding, **Refresh Node** on existing Get Prone Floor Data nodes. The former single return or Tip/Back/Combined pins have been replaced by Tip/Back/Center, so old pin connections need manual rewiring. The user owns Blueprint implementation; the `S_FloorData` asset and function graphs were not modified for this output change.
 
 Before the user narrowed the task to C++, six variables were added and saved in `SandboxCharacter_Mover`: `TipFloorNormal`, `BackFloorNormal`, `TipHasFloor`, `BackHasFloor`, `TipFloorLocation`, `BackFloorLocation`. The Blueprint compiled to `BS_UP_TO_DATE`. No function graph wiring or Control Rig edits were applied.
 
 ## Sampling and capsule alignment
 
-- Local grounded prone simulation runs two downward line traces after movement, once per simulation substep. Only when both end probes miss valid walkable floor, a third trace runs at the capsule center using the same vertical bounds and collision settings.
+- Local grounded prone simulation runs three downward line traces after movement, once per simulation substep: tip, back, and center. All use the same vertical bounds and collision settings.
 - Probe anchors are the capsule centre plus/minus its scaled half length along the pawn's forward direction projected onto the plane perpendicular to Mover's up direction. Capsule collision tilt does not determine the anchors.
 - Each trace starts one half length above its anchor and ends one half length plus `CommonLegacyMovementSettings.FloorSweepDistance` below it. Collision responses and the walkable slope threshold come from the existing Mover settings. The owning actor is ignored.
-- End and conditional center samples are copied/serialized with `FStanceModifier`, and finalized samples are published on `CharacterMoverComponent`. Simulated proxies use received samples without running local probes.
-- The capsule derives its desired normal from the selected cached result on the next simulation substep, including center fallback when valid. The existing 80 ms stability window, angular deadband, and sampled clearance checks remain in effect.
+- All three samples are copied/serialized with `FStanceModifier`, and finalized samples are published on `CharacterMoverComponent`. Simulated proxies use received samples without running local probes.
+- Capsule alignment still selects tip only, both normalized together, back only, then center if both ends miss. The selected result is used on the next simulation substep. Center does not influence alignment while either end is valid. The existing 80 ms stability window, angular deadband, and sampled clearance checks remain in effect.
 - If all probes miss while grounded, the capsule retains its accepted tilt. Airborne alignment targets Mover's up direction.
 - The full capsule floor sweep still handles physical ground support and floor distance. Its winning contact does not choose prone alignment after probe data is available.
 - Standing and crouching keep the existing floor-query path.
@@ -57,4 +56,6 @@ The three-struct output API subsequently built successfully at 19:06:40 UTC (`Ed
 
 The incremental output-API patch is `Tools/Patches/MoverProneFloorStructOutputs-UE5.8.patch`, applied after the probe patch. Backups of the three modified files, staged source, installed hashes, and successful prior build evidence are in `Saved/VibeUE/ProneFloorStructOutputs-20261011`. Sampling and stance serialization were not changed by this patch.
 
-The latest **single-result** source supersedes that DLL and is **not yet compiled**; `last-build.json` is marked `stale`. The additional patch is `Tools/Patches/MoverProneSingleFloorResult-UE5.8.patch`, applied after the three-struct output patch. Backups, staged source, installed hashes, and previous successful build evidence are in `Saved/VibeUE/ProneSingleFloorResult-20261011`. This revision adds the conditional center query and serializes its validity/normal/location; all multiplayer peers need this same revision. A real external build is required before the editor exposes the new single output.
+The **single-result** version subsequently built successfully at 19:20:52 UTC (`EditorBuild-20261011-222025.log`), confirmed by WorkflowService with `isStale == false` before restoring separate outputs. Its DLL SHA-256 was `3589bec8235a794f90f3f71736696c20eda1aa49686392055d6e12982881128e`. Its patch is `Tools/Patches/MoverProneSingleFloorResult-UE5.8.patch`, applied after the three-struct output patch, with backups in `Saved/VibeUE/ProneSingleFloorResult-20261011`. That historical version added the conditional center query and its serialized data.
+
+The newest **Tip/Back/Center** source supersedes that DLL and is **not yet compiled**; `last-build.json` is marked `stale`. Its incremental patch is `Tools/Patches/MoverProneTipBackCenter-UE5.8.patch`, applied after the single-result patch. Backups, staged source, installed hashes, and previous successful build evidence are in `Saved/VibeUE/ProneThreeFloorResults-20261011`. It samples center every grounded prone substep and restores separate outputs; the serialized field layout is unchanged from the single-result version. A real external build is required before the editor exposes the latest pins.

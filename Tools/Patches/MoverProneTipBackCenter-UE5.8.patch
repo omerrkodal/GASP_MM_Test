@@ -1,0 +1,90 @@
+--- a/Source/Mover/Public/DefaultMovementSet/CharacterMoverComponent.h
++++ b/Source/Mover/Public/DefaultMovementSet/CharacterMoverComponent.h
+@@ -127,13 +127,13 @@
+     UPROPERTY(Transient, BlueprintReadOnly, Category="Mover|Prone")
+     FProneFloorData CachedProneFloorData;
+ 
+-    /** Read one cached world-space prone floor result without tracing.
+-     * Selects tip only, both combined, back only, then a center probe if neither end hits.
+-     * Both-hit Location is the midpoint of the impact points. Does Hit? is false outside
+-     * grounded prone or if all probes miss; then Normal is up and Location is pawn position.
++    /** Read independent cached world-space tip, back, and center probes without tracing.
++     * Each Does Hit? reports that probe's walkable hit while prone and grounded.
++     * Missing samples return up/updated-component position with Does Hit? false.
++     * Center is an actual floor probe beneath the pawn, not the midpoint of tip/back.
+      */
+-    UFUNCTION(BlueprintPure, Category="Mover|Prone", meta=(ReturnDisplayName="Floor Data"))
+-    UE_API FMoverFloorData GetProneFloorData() const;
++    UFUNCTION(BlueprintPure, Category="Mover|Prone")
++    UE_API void GetProneFloorData(FMoverFloorData& Tip, FMoverFloorData& Back, FMoverFloorData& Center) const;
+ 
+ 	// Broadcast when this actor changes stances.
+ 	UPROPERTY(BlueprintAssignable, Category = Mover)
+--- a/Source/Mover/Private/DefaultMovementSet/CharacterMoverComponent.cpp
++++ b/Source/Mover/Private/DefaultMovementSet/CharacterMoverComponent.cpp
+@@ -83,15 +83,20 @@
+ 	return HasGameplayTag(Mover_IsProne, true);
+ }
+ 
+-FMoverFloorData UCharacterMoverComponent::GetProneFloorData() const
+-{
+-    FMoverFloorData FloorData;
+-    FloorData.bDoesHit = IsProne() && IsOnGround() && CachedProneFloorData.HasFloor();
+-    FloorData.Normal = FloorData.bDoesHit ? CachedProneFloorData.CombinedFloorNormal :
+-        GetUpDirection().GetSafeNormal();
+-    FloorData.Location = FloorData.bDoesHit ? CachedProneFloorData.CombinedFloorLocation :
+-        GetUpdatedComponentTransform().GetLocation();
+-    return FloorData;
++void UCharacterMoverComponent::GetProneFloorData(FMoverFloorData& Tip, FMoverFloorData& Back, FMoverFloorData& Center) const
++{
++    const FVector Up = GetUpDirection().GetSafeNormal();
++    const FVector Location = GetUpdatedComponentTransform().GetLocation();
++    const bool bCanUseData = IsProne() && IsOnGround();
++    auto SetSample = [&](FMoverFloorData& Out, bool bHasFloor, const FVector& Normal, const FVector& ImpactPoint)
++    {
++        Out.bDoesHit = bCanUseData && bHasFloor;
++        Out.Normal = Out.bDoesHit ? Normal : Up;
++        Out.Location = Out.bDoesHit ? ImpactPoint : Location;
++    };
++    SetSample(Tip, CachedProneFloorData.bTipHasFloor, CachedProneFloorData.TipFloorNormal, CachedProneFloorData.TipFloorLocation);
++    SetSample(Back, CachedProneFloorData.bBackHasFloor, CachedProneFloorData.BackFloorNormal, CachedProneFloorData.BackFloorLocation);
++    SetSample(Center, CachedProneFloorData.bCenterHasFloor, CachedProneFloorData.CenterFloorNormal, CachedProneFloorData.CenterFloorLocation);
+ }
+ 
+ bool UCharacterMoverComponent::IsFlying() const
+--- a/Source/Mover/Public/MoveLibrary/ProneCapsuleUtils.h
++++ b/Source/Mover/Public/MoveLibrary/ProneCapsuleUtils.h
+@@ -29,7 +29,7 @@
+     static bool IsWithinFootprint(const UCapsuleComponent* Capsule, const FVector& Location, const FVector& ImpactPoint, float Radius, const FVector& UpDirection);
+     // Rotation for a prone capsule whose long axis is tangent to SurfaceNormal.
+     static FQuat GetProneRotation(const FQuat& RootRotation, const FVector& SurfaceNormal);
+-    // Two fixed end probes, plus a center probe only when both miss; independent of collision tilt.
++    // Three fixed tip/back/center probes each grounded prone substep; independent of collision tilt.
+     static FProneFloorData SampleProneFloorData(const UMoverComponent* MoverComp, const UCapsuleComponent* Capsule);
+     static FVector GetDesiredSurfaceNormal(const UMoverComponent* MoverComp);
+     static bool TryAlignToSurface(UCapsuleComponent* Capsule, const FVector& SurfaceNormal);
+--- a/Source/Mover/Private/MoveLibrary/ProneCapsuleUtils.cpp
++++ b/Source/Mover/Private/MoveLibrary/ProneCapsuleUtils.cpp
+@@ -92,10 +92,7 @@
+     };
+     Sample(1.f, Data.bTipHasFloor, Data.TipFloorNormal, Data.TipFloorLocation);
+     Sample(-1.f, Data.bBackHasFloor, Data.BackFloorNormal, Data.BackFloorLocation);
+-    if (!Data.bTipHasFloor && !Data.bBackHasFloor)
+-    {
+-        Sample(0.f, Data.bCenterHasFloor, Data.CenterFloorNormal, Data.CenterFloorLocation);
+-    }
++    Sample(0.f, Data.bCenterHasFloor, Data.CenterFloorNormal, Data.CenterFloorLocation);
+     Data.UpdateCombined();
+     return Data;
+ }
+--- a/Source/Mover/Public/DefaultMovementSet/ProneFloorData.h
++++ b/Source/Mover/Public/DefaultMovementSet/ProneFloorData.h
+@@ -20,7 +20,7 @@
+     FVector Location = FVector::ZeroVector;
+ };
+ 
+-/** Cached world-space end probes, conditional center probe, and selected prone floor result. */
++/** Independent cached world-space tip/back/center probes and selected capsule alignment result. */
+ USTRUCT(BlueprintType)
+ struct MOVER_API FProneFloorData
+ {
