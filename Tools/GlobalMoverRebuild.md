@@ -32,20 +32,23 @@ The script performs an incremental native build. Changed headers and C++ files t
 
 For build diagnosis, `--plan-only` exports pending compile/link actions without executing them. It leaves `last-build.json` unchanged and never records a plan as a successful build.
 
-## Horizontal prone source change: pending native build
+## Horizontal prone source change: built; gameplay checks incomplete
 
-The first native compilation reported a namespace error in `ProneCapsuleUtils.cpp`. The construction call now uses `::MakeImplicitObjectPtr<Chaos::FCapsule>`, matching UE 5.8's global template declaration. This correction is installed globally and included in the saved patch; a successful rebuild is still required.
+The first native compilation reported a namespace error in `ProneCapsuleUtils.cpp`. The construction call now uses `::MakeImplicitObjectPtr<Chaos::FCapsule>`, matching UE 5.8's global template declaration. This correction is installed globally and included in the saved patch.
 
-The horizontal prone source has been installed in the global plugin but has not yet compiled or been checked in gameplay. The loaded editor DLL still contains the previous upright prone implementation. If compilation fails, preserve the build log for diagnosis; do not assume the feature is ready.
+The native rebuild succeeded on 2026-10-11 at 15:07:22 UTC (`EditorBuild-20261011-180635.log`); MCP reported `lastBuild.status=succeeded` and `isStale=false`, and the new helper is loaded. A live prone sample measured the Chaos capsule axis as `(1, 0, 0)` while the root component rotation stayed upright. This verifies orientation for that sample; movement, blocked transitions, and collision coverage are still incomplete.
 
 The implementation keeps the pawn/root transform upright and rotates its live Chaos collision capsule along the pawn's forward axis. Its native floor, clearance, and movement queries account for that collision orientation.
 
 - **Prone Half Height** is now the capsule's forward **half length**, including the rounded end caps. Its existing value is preserved.
 - **Prone Capsule Radius** controls vertical half thickness and sideways width. Half length must be at least the radius.
+- The character Blueprint's working prone values are half length `55` and radius `32` cm. Random values of half length `32` and radius `55` produced a sphere because half length is clamped to radius. Equal dimensions have no meaningful capsule axis.
 - **Prone Eye Height** remains a separate stance setting.
 - `mover.debug.DrawProneCapsule 1` draws the intended collision shape in cyan; use `0` to disable it. The standard capsule component wireframe uses its upright root transform and does not show the live physics orientation.
 - The implementation targets a standard, unwelded capsule moved by CharacterMover. Compound/welded collision and async/ChaosMover simulation require separate review.
 
 After the native build succeeds, check standing/crouch/prone transitions, collision at the capsule's front and rear, turning beside walls, and blocked stance changes. A build success is not a gameplay pass.
+
+During the follow-up diagnosis, the native `StartPIE` tool reported `No such camera parameter: EnableCollision`, and the PIE session ended before the debug screenshot could be captured. No complete visual/gameplay pass is recorded. The Blueprint settings edit compiled to `BS_UP_TO_DATE` and saved successfully.
 
 Source backup, staged files, and the patch are under `Saved/VibeUE/HorizontalProne-20261011`. Keep a copy of that folder before deleting Saved or resetting project changes.

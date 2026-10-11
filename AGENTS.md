@@ -298,3 +298,5 @@ crash handler — MCP will hang; relaunch); fresh and small → the editor is fi
 <!-- Local build gotcha: The embedded terminal exits with Unreal; rebuild global Mover externally using Tools/RebuildGlobalMover.cmd. Use the project editor target plus -Plugin=<global Mover.uplugin>; the generic UnrealEditor target may return metadata-only success. UBT regenerates this project's temporary targets after Intermediate deletion. -->
 
 <!-- Chaos 5.8 gotcha: MakeImplicitObjectPtr is a global function template; use ::MakeImplicitObjectPtr<Chaos::FCapsule>, not Chaos::MakeImplicitObjectPtr. -->
+
+<!-- Prone collision gotcha: Global Mover rotates the live Chaos capsule geometry, not the upright root/wireframe; inspect ProneCapsuleUtils.get_physics_capsule_axis or mover.debug.DrawProneCapsule 1. Half length <= radius produces a sphere. -->
