@@ -1,0 +1,300 @@
+--- a/Source/Mover/Public/MoveLibrary/ProneCapsuleUtils.h
++++ b/Source/Mover/Public/MoveLibrary/ProneCapsuleUtils.h
+@@ -5,6 +5,7 @@
+ 
+ class UCapsuleComponent;
+ class UPrimitiveComponent;
++class UMoverComponent;
+ 
+ /** Collision orientation independent of the pawn/root transform. */
+ UCLASS()
+@@ -25,6 +26,10 @@
+     static FQuat GetQueryRotation(const UPrimitiveComponent* Primitive, const FQuat& RootRotation);
+     static float GetVerticalExtent(const UCapsuleComponent* Capsule, const FVector& UpDirection);
+     static bool IsWithinFootprint(const UCapsuleComponent* Capsule, const FVector& Location, const FVector& ImpactPoint, float Radius, const FVector& UpDirection);
++    // Rotation for a prone capsule whose long axis is tangent to SurfaceNormal.
++    static FQuat GetProneRotation(const FQuat& RootRotation, const FVector& SurfaceNormal);
++    static FVector GetDesiredSurfaceNormal(const UMoverComponent* MoverComp);
++    static bool TryAlignToSurface(UCapsuleComponent* Capsule, const FVector& SurfaceNormal);
+     static void SetHorizontal(UCapsuleComponent* Capsule, bool bHorizontal);
+     static void EnsurePhysicsGeometry(UCapsuleComponent* Capsule);
+     static void DrawDebug(const UCapsuleComponent* Capsule);
+--- a/Source/Mover/Private/MoveLibrary/ProneCapsuleUtils.cpp
++++ b/Source/Mover/Private/MoveLibrary/ProneCapsuleUtils.cpp
+@@ -1,6 +1,14 @@
+ // Copyright Epic Games, Inc. All Rights Reserved.
+ #include "MoveLibrary/ProneCapsuleUtils.h"
+ #include "Components/CapsuleComponent.h"
++#include "DefaultMovementSet/CharacterMoverComponent.h"
++#include "MoveLibrary/MoverBlackboard.h"
++#include "MoverSimulationTypes.h"
++#include "MoverComponent.h"
++#include "MoveLibrary/MovementUtils.h"
++#include "MoveLibrary/FloorQueryUtils.h"
++#include "GameFramework/Actor.h"
++#include "Engine/World.h"
+ #include "PhysicsEngine/BodyInstance.h"
+ #include "Physics/PhysicsInterfaceCore.h"
+ #include "Chaos/Capsule.h"
+@@ -12,7 +20,10 @@
+ const FName HorizontalCapsuleTag(TEXT("Mover.HorizontalProneCapsule"));
+ TAutoConsoleVariable<int32> CVarDrawProneCapsule(TEXT("mover.debug.DrawProneCapsule"), 0,
+     TEXT("Draw Mover's actual capsule collision orientation: 0 off, 1 on."), ECVF_Cheat);
+-FQuat HorizontalOffset() { return FQuat::FindBetweenNormals(FVector::UpVector, FVector::ForwardVector); }
++UCharacterMoverComponent* FindCharacterMover(const UCapsuleComponent* Capsule)
++{
++    return Capsule && Capsule->GetOwner() ? Capsule->GetOwner()->FindComponentByClass<UCharacterMoverComponent>() : nullptr;
++}
+ }
+ 
+ bool UProneCapsuleUtils::IsCapsuleHorizontal(const UCapsuleComponent* Capsule)
+@@ -22,7 +33,83 @@
+ 
+ FQuat UProneCapsuleUtils::GetQueryRotation(const UPrimitiveComponent* Primitive, const FQuat& RootRotation)
+ {
+-    return IsCapsuleHorizontal(Cast<UCapsuleComponent>(Primitive)) ? RootRotation * HorizontalOffset() : RootRotation;
++    const UCapsuleComponent* Capsule = Cast<UCapsuleComponent>(Primitive);
++    if (!IsCapsuleHorizontal(Capsule)) { return RootRotation; }
++    const UCharacterMoverComponent* CharacterMover = FindCharacterMover(Capsule);
++    const FVector SurfaceNormal = CharacterMover ? CharacterMover->ProneCollisionSurfaceNormal : FVector::ZeroVector;
++    return GetProneRotation(RootRotation, SurfaceNormal);
++}
++
++FQuat UProneCapsuleUtils::GetProneRotation(const FQuat& RootRotation, const FVector& SurfaceNormal)
++{
++    const FVector Normal = SurfaceNormal.IsNearlyZero() ? RootRotation.GetAxisZ() : SurfaceNormal.GetSafeNormal();
++    FVector Axis = FVector::VectorPlaneProject(RootRotation.GetAxisX(), Normal).GetSafeNormal();
++    if (Axis.IsNearlyZero())
++    {
++        Axis = FVector::VectorPlaneProject(RootRotation.GetAxisY(), Normal).GetSafeNormal();
++    }
++    if (Axis.IsNearlyZero()) { Axis = RootRotation.GetAxisX(); }
++    // Capsule roll is immaterial; only its local Z (long) axis needs to match.
++    return RootRotation * FQuat::FindBetweenNormals(FVector::UpVector, RootRotation.UnrotateVector(Axis));
++}
++
++FVector UProneCapsuleUtils::GetDesiredSurfaceNormal(const UMoverComponent* MoverComp)
++{
++    if (!MoverComp) { return FVector::UpVector; }
++    const FVector Up = MoverComp->GetUpDirection().GetSafeNormal();
++    const UCharacterMoverComponent* CharacterMover = Cast<UCharacterMoverComponent>(MoverComp);
++    if (CharacterMover && !CharacterMover->IsOnGround()) { return Up; }
++    FFloorCheckResult Floor;
++    const UMoverBlackboard* Blackboard = MoverComp->GetSimBlackboard();
++    if (Blackboard && Blackboard->TryGet(CommonBlackboard::LastFloorResult, Floor))
++    {
++        const FVector Normal = Floor.HitResult.ImpactNormal.GetSafeNormal();
++        if (Floor.IsWalkableFloor() && !Normal.IsNearlyZero() && Normal.Dot(Up) > UE_KINDA_SMALL_NUMBER) { return Normal; }
++        return Up;
++    }
++    // A shape change invalidates the floor cache until Walking recomputes it.
++    // Retain the accepted pose during that gap instead of snapping level.
++    if (CharacterMover && !CharacterMover->ProneCollisionSurfaceNormal.IsNearlyZero())
++    {
++        return CharacterMover->ProneCollisionSurfaceNormal.GetSafeNormal();
++    }
++    return Up;
++}
++
++bool UProneCapsuleUtils::TryAlignToSurface(UCapsuleComponent* Capsule, const FVector& SurfaceNormal)
++{
++    UCharacterMoverComponent* CharacterMover = FindCharacterMover(Capsule);
++    if (!CharacterMover || !IsCapsuleHorizontal(Capsule)) { return false; }
++    const FVector Normal = SurfaceNormal.GetSafeNormal();
++    if (Normal.IsNearlyZero()) { return false; }
++    if (CharacterMover->ProneCollisionSurfaceNormal.Equals(Normal, UE_KINDA_SMALL_NUMBER)) { return true; }
++    const FQuat CurrentRotation = GetCapsuleCollisionRotation(Capsule);
++    const FQuat DesiredRotation = GetProneRotation(Capsule->GetComponentQuat(), Normal);
++    const FQuat TargetRotation = FQuat::FindBetweenNormals(CurrentRotation.GetAxisZ(), DesiredRotation.GetAxisZ()) * CurrentRotation;
++    const float Angle = CurrentRotation.AngularDistance(TargetRotation);
++    const int32 Steps = FMath::Max(1, FMath::CeilToInt(Angle / FMath::DegreesToRadians(5.f)));
++    FCollisionQueryParams Params(SCENE_QUERY_STAT(ProneSlopeAlignment), false, Capsule->GetOwner());
++    FCollisionResponseParams Response;
++    UMovementUtils::InitCollisionParams(Capsule, Params, Response);
++    // Do not tilt an endpoint through a wall or ceiling. Keep the last accepted
++    // normal if any sampled intermediate pose is blocked.
++    for (int32 Step = 1; Step <= Steps; ++Step)
++    {
++        const FQuat TestRotation = FQuat::Slerp(CurrentRotation, TargetRotation, float(Step) / Steps);
++        if (Capsule->GetWorld()->OverlapBlockingTestByChannel(Capsule->GetComponentLocation(), TestRotation,
++            Capsule->GetCollisionObjectType(), Capsule->GetCollisionShape(-0.1f), Params, Response)) { return false; }
++    }
++    CharacterMover->ProneCollisionSurfaceNormal = Normal;
++    EnsurePhysicsGeometry(Capsule);
++    if (Angle > UE_KINDA_SMALL_NUMBER)
++    {
++        if (UMoverBlackboard* Blackboard = CharacterMover->GetSimBlackboard_Mutable())
++        {
++            Blackboard->Invalidate(CommonBlackboard::LastFloorResult);
++        }
++    }
++    Capsule->UpdateOverlaps();
++    return true;
+ }
+ 
+ FQuat UProneCapsuleUtils::GetCapsuleCollisionRotation(const UCapsuleComponent* Capsule)
+@@ -59,7 +146,14 @@
+ {
+     if (!Capsule) { return; }
+     if (bHorizontal) { Capsule->ComponentTags.AddUnique(HorizontalCapsuleTag); }
+-    else { Capsule->ComponentTags.Remove(HorizontalCapsuleTag); }
++    else
++    {
++        Capsule->ComponentTags.Remove(HorizontalCapsuleTag);
++        if (UCharacterMoverComponent* CharacterMover = FindCharacterMover(Capsule))
++        {
++            CharacterMover->ProneCollisionSurfaceNormal = FVector::ZeroVector;
++        }
++    }
+     EnsurePhysicsGeometry(Capsule);
+     Capsule->UpdateOverlaps();
+ }
+@@ -71,7 +165,8 @@
+     if (!Body || !Body->IsValidBodyInstance() || Body->WeldParent) { return; }
+     const float Radius = Capsule->GetScaledCapsuleRadius();
+     const float HalfLength = FMath::Max((float)FCollisionShape::MinCapsuleAxisHalfHeight(), Capsule->GetScaledCapsuleHalfHeight() - Radius);
+-    const FVector Axis = IsCapsuleHorizontal(Capsule) ? FVector::ForwardVector : FVector::UpVector;
++    const FVector Axis = IsCapsuleHorizontal(Capsule) ?
++        Capsule->GetComponentQuat().UnrotateVector(GetCapsuleCollisionRotation(Capsule).GetAxisZ()).GetSafeNormal() : FVector::UpVector;
+     const Chaos::FVec3 End = Axis * HalfLength;
+     FPhysicsCommand::ExecuteWrite(Body->GetPhysicsActorHandle(), [&](const FPhysicsActorHandle& Actor)
+     {
+--- a/Source/Mover/Public/DefaultMovementSet/CharacterMoverComponent.h
++++ b/Source/Mover/Public/DefaultMovementSet/CharacterMoverComponent.h
+@@ -118,6 +118,10 @@
+ 	UFUNCTION(BlueprintCallable, Category = Mover)
+ 	bool GetCrouchIntent() const { return bWantsToCrouch; };
+ 
++    /** Accepted walkable surface normal for prone collision. Restored from the stance modifier. */
++    UPROPERTY(Transient, BlueprintReadOnly, Category = "Mover|Prone")
++    FVector ProneCollisionSurfaceNormal = FVector::ZeroVector;
++
+ 	// Broadcast when this actor changes stances.
+ 	UPROPERTY(BlueprintAssignable, Category = Mover)
+ 	FMover_OnStanceChanged OnStanceChanged;
+--- a/Source/Mover/Public/DefaultMovementSet/MovementModifiers/StanceModifier.h
++++ b/Source/Mover/Public/DefaultMovementSet/MovementModifiers/StanceModifier.h
+@@ -36,6 +36,9 @@
+ 	virtual ~FStanceModifier() override = default;
+ 
+ 	EStanceMode ActiveStance;
++
++    // Accepted collision surface normal; copied and serialized with movement state.
++    FVector ProneSurfaceNormal = FVector::ZeroVector;
+ 	
+ 	UE_API virtual bool HasGameplayTag(FGameplayTag TagToFind, bool bExactMatch) const override;
+ 	UE_API virtual void GetGameplayTags(FGameplayTagContainer& InOutTags) const override;
+--- a/Source/Mover/Private/DefaultMovementSet/MovementModifiers/StanceModifier.cpp
++++ b/Source/Mover/Private/DefaultMovementSet/MovementModifiers/StanceModifier.cpp
+@@ -12,6 +12,8 @@
+ #include "GameFramework/Pawn.h"
+ #include "MoveLibrary/MovementUtils.h"
+ #include "MoveLibrary/ProneCapsuleUtils.h"
++#include "MoveLibrary/MoverBlackboard.h"
++#include "MoverSimulationTypes.h"
+ 
+ #include UE_INLINE_GENERATED_CPP_BY_NAME(StanceModifier)
+ 
+@@ -89,6 +91,15 @@
+ 		float NewEyeHeight = 0.0f;
+ 		if (GetStanceDimensions(MoverComp, ActiveStance, NewHalfHeight, NewRadius, NewEyeHeight))
+ 		{
++            if (UCharacterMoverComponent* CharacterMover = Cast<UCharacterMoverComponent>(MoverComp))
++            {
++                if (ActiveStance == EStanceMode::Prone)
++                {
++                    if (ProneSurfaceNormal.IsNearlyZero()) { ProneSurfaceNormal = UProneCapsuleUtils::GetDesiredSurfaceNormal(MoverComp); }
++                    CharacterMover->ProneCollisionSurfaceNormal = ProneSurfaceNormal;
++                }
++                else { CharacterMover->ProneCollisionSurfaceNormal = FVector::ZeroVector; }
++            }
+ 			AdjustCapsule(MoverComp, CapsuleComponent->GetUnscaledCapsuleHalfHeight(), CapsuleComponent->GetUnscaledCapsuleRadius(), NewHalfHeight, NewRadius, NewEyeHeight, ActiveStance == EStanceMode::Prone);
+ 			ApplyMovementSettings(MoverComp);
+ 			AppliedStance = ActiveStance;
+@@ -124,6 +135,17 @@
+ {
+     if (UCapsuleComponent* Capsule = Cast<UCapsuleComponent>(MoverComp->GetUpdatedComponent()))
+     {
++        if (UCharacterMoverComponent* CharacterMover = Cast<UCharacterMoverComponent>(MoverComp))
++        {
++            // Re-establish the copied/replicated normal before deriving this step's floor pose.
++            CharacterMover->ProneCollisionSurfaceNormal = ProneSurfaceNormal;
++            UProneCapsuleUtils::EnsurePhysicsGeometry(Capsule);
++            if (ActiveStance == EStanceMode::Prone && UProneCapsuleUtils::IsCapsuleHorizontal(Capsule))
++            {
++                UProneCapsuleUtils::TryAlignToSurface(Capsule, UProneCapsuleUtils::GetDesiredSurfaceNormal(MoverComp));
++                ProneSurfaceNormal = CharacterMover->ProneCollisionSurfaceNormal;
++            }
++        }
+         // Reapply after physics recreation or scale changes, without allocating if already correct.
+         UProneCapsuleUtils::EnsurePhysicsGeometry(Capsule);
+     }
+@@ -156,6 +178,7 @@
+ 
+ 	uint8 SerializedStance = static_cast<uint8>(ActiveStance);
+ 	Ar.SerializeBits(&SerializedStance, 2);
++    Ar << ProneSurfaceNormal;
+ 	if (Ar.IsLoading())
+ 	{
+ 		ActiveStance = static_cast<EStanceMode>(SerializedStance);
+@@ -201,7 +224,9 @@
+     const float TargetRadiusScaled = TargetRadius * Scale;
+     const bool bTargetHorizontal = TargetStance == EStanceMode::Prone;
+     const bool bCurrentHorizontal = UProneCapsuleUtils::IsCapsuleHorizontal(CapsuleComponent);
+-    if (bTargetHorizontal == bCurrentHorizontal && TargetHalfHeightScaled <= CapsuleComponent->GetScaledCapsuleHalfHeight() && TargetRadiusScaled <= CurrentRadius)
++    const FVector TargetNormal = UProneCapsuleUtils::GetDesiredSurfaceNormal(MoverComp);
++    const bool bSameSurface = !bTargetHorizontal || MoverComp->ProneCollisionSurfaceNormal.Equals(TargetNormal, UE_KINDA_SMALL_NUMBER);
++    if (bTargetHorizontal == bCurrentHorizontal && bSameSurface && TargetHalfHeightScaled <= CapsuleComponent->GetScaledCapsuleHalfHeight() && TargetRadiusScaled <= CurrentRadius)
+     {
+         return true;
+     }
+@@ -209,8 +234,8 @@
+     FCollisionResponseParams Response;
+     UMovementUtils::InitCollisionParams(UpdatedCompAsPrimitive, Params, Response);
+     const FTransform PawnTransform = MoverComp->GetUpdatedComponentTransform();
+-    const FQuat TargetRotation = bTargetHorizontal ? PawnTransform.GetRotation() *
+-        FQuat::FindBetweenNormals(FVector::UpVector, FVector::ForwardVector) : PawnTransform.GetRotation();
++    const FQuat TargetRotation = bTargetHorizontal ?
++        UProneCapsuleUtils::GetProneRotation(PawnTransform.GetRotation(), TargetNormal) : PawnTransform.GetRotation();
+     const FVector Up = MoverComp->GetUpDirection();
+     const float TargetExtent = TargetRadiusScaled + (TargetHalfHeightScaled - TargetRadiusScaled) * FMath::Abs(TargetRotation.GetAxisZ().Dot(Up));
+     const float CurrentExtent = UProneCapsuleUtils::GetVerticalExtent(CapsuleComponent, Up);
+@@ -241,6 +266,10 @@
+     const float OldExtent = UProneCapsuleUtils::GetVerticalExtent(Capsule, Up);
+     Capsule->SetCapsuleSize(NewRadius, FMath::Max(NewHalfHeight, NewRadius), false);
+     UProneCapsuleUtils::SetHorizontal(Capsule, bHorizontal);
++    if (UMoverBlackboard* Blackboard = MoverComp->GetSimBlackboard_Mutable())
++    {
++        Blackboard->Invalidate(CommonBlackboard::LastFloorResult);
++    }
+     // UCapsuleComponent bounds are upright. Use conservative bounds for horizontal collision.
+     Capsule->SetBoundsScale(bHorizontal ? FMath::Max(OriginalCapsuleBoundsScale,
+         Capsule->GetScaledCapsuleHalfHeight() / FMath::Max(Capsule->GetScaledCapsuleRadius(), 1.f)) : OriginalCapsuleBoundsScale);
+--- a/Source/Mover/Private/MoveLibrary/MovementUtils.cpp
++++ b/Source/Mover/Private/MoveLibrary/MovementUtils.cpp
+@@ -888,6 +888,8 @@
+                 }
+             }
+             Capsule->MoveComponent(FVector::ZeroVector, SafeRotation, false, nullptr, MoveComponentFlags, Teleport);
++            // Turning changes the local slope tilt needed for the same world floor normal.
++            UProneCapsuleUtils::EnsurePhysicsGeometry(Capsule);
+             const bool bMoved = Capsule->MoveComponent(ConstrainedDelta, SafeRotation, bSweep, OutHit, MoveComponentFlags, Teleport);
+             // UCapsuleComponent's symmetric-rotation optimization assumes its axis is local Z.
+             if (bMoved && !OldRotation.Equals(Capsule->GetComponentQuat())) { Capsule->UpdateOverlaps(); }
+--- a/Source/Mover/Private/DefaultMovementSet/CharacterMoverComponent.cpp
++++ b/Source/Mover/Private/DefaultMovementSet/CharacterMoverComponent.cpp
+@@ -252,6 +252,14 @@
+ void UCharacterMoverComponent::OnMoverPostFinalize(const FMoverSyncState& SyncState, const FMoverAuxStateContext& AuxState)
+ {
+ 	UpdateSyncedMontageState(GetLastTimeStep(), SyncState, AuxState);
++    if (const FStanceModifier* StanceModifier = FindMovementModifierByType<FStanceModifier>())
++    {
++        if (StanceModifier->ActiveStance == EStanceMode::Prone)
++        {
++            ProneCollisionSurfaceNormal = StanceModifier->ProneSurfaceNormal;
++            UProneCapsuleUtils::EnsurePhysicsGeometry(Cast<UCapsuleComponent>(GetUpdatedComponent()));
++        }
++    }
+     UProneCapsuleUtils::DrawDebug(Cast<UCapsuleComponent>(GetUpdatedComponent()));
+ }
+ 

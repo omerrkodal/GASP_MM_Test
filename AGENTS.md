@@ -300,3 +300,5 @@ crash handler — MCP will hang; relaunch); fresh and small → the editor is fi
 <!-- Chaos 5.8 gotcha: MakeImplicitObjectPtr is a global function template; use ::MakeImplicitObjectPtr<Chaos::FCapsule>, not Chaos::MakeImplicitObjectPtr. -->
 
 <!-- Prone collision gotcha: Global Mover rotates the live Chaos capsule geometry, not the upright root/wireframe; inspect ProneCapsuleUtils.get_physics_capsule_axis or mover.debug.DrawProneCapsule 1. Half length <= radius produces a sphere. -->
+
+<!-- Prone slope gotcha: Use cached walkable LastFloorResult.HitResult.ImpactNormal to project the facing axis onto ground; after tilting, invalidate the cached floor distance and retain the accepted normal until Walking refreshes it. -->

@@ -32,13 +32,23 @@ The script performs an incremental native build. Changed headers and C++ files t
 
 For build diagnosis, `--plan-only` exports pending compile/link actions without executing them. It leaves `last-build.json` unchanged and never records a plan as a successful build.
 
-## Horizontal prone source change: built; gameplay checks incomplete
+## Horizontal prone built; slope alignment pending rebuild
 
 The first native compilation reported a namespace error in `ProneCapsuleUtils.cpp`. The construction call now uses `::MakeImplicitObjectPtr<Chaos::FCapsule>`, matching UE 5.8's global template declaration. This correction is installed globally and included in the saved patch.
 
-The native rebuild succeeded on 2026-10-11 at 15:07:22 UTC (`EditorBuild-20261011-180635.log`); MCP reported `lastBuild.status=succeeded` and `isStale=false`, and the new helper is loaded. A live prone sample measured the Chaos capsule axis as `(1, 0, 0)` while the root component rotation stayed upright. This verifies orientation for that sample; movement, blocked transitions, and collision coverage are still incomplete.
+The horizontal-only native rebuild succeeded on 2026-10-11 at 15:07:22 UTC (`EditorBuild-20261011-180635.log`). A live prone sample measured the Chaos capsule axis as `(1, 0, 0)` while the root component rotation stayed upright. This verifies orientation for that sample; movement, blocked transitions, and collision coverage are still incomplete. Later slope-alignment source changes supersede that build, so `last-build.json` now reports `stale` until the external rebuild succeeds.
 
 The implementation keeps the pawn/root transform upright and rotates its live Chaos collision capsule along the pawn's forward axis. Its native floor, clearance, and movement queries account for that collision orientation.
+
+### Slope alignment source change (2026-10-11): native build pending
+
+The slope change uses Mover's existing `CommonBlackboard::LastFloorResult.HitResult.ImpactNormal` for walkable ground. It projects the pawn's facing direction onto that plane and uses the resulting long axis for both Chaos geometry and query capsules. The accepted normal is copied/serialized with the stance modifier and restored on finalization. Turns refresh the local tilt before translation. Sampled clearance checks reject blocked tilt arcs; accepted shape changes invalidate the old floor distance for Walking Mode to refresh. During a cache refresh, the previous accepted ground normal is retained. Airborne alignment targets Mover's up direction.
+
+This source is installed in the global plugin. `--plan-only` exported compile/link actions for the updated Mover DLL; this does not prove C++ compilation or slope behavior. Close Unreal and run `Tools/RebuildGlobalMover.cmd` as administrator. All multiplayer peers must use the same plugin revision because the stance modifier serialization now includes its accepted normal. Async/ChaosMover and multiplayer behavior remain unverified.
+
+Backups, staged source, the installed-file hash report, and the additional `slope-prone.patch` are in `Saved/VibeUE/SlopeProne-20261011`. Preserve both this folder and the earlier `HorizontalProne-20261011` folder before resetting or deleting Saved. The slope patch applies on top of the horizontal implementation; the older horizontal staging script alone does not contain this update.
+
+A copy of the additional patch is tracked in Git at `Tools/Patches/MoverSlopeAlignment-UE5.8.patch`.
 
 - **Prone Half Height** is now the capsule's forward **half length**, including the rounded end caps. Its existing value is preserved.
 - **Prone Capsule Radius** controls vertical half thickness and sideways width. Half length must be at least the radius.
