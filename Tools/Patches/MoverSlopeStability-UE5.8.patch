@@ -1,0 +1,120 @@
+--- a/Source/Mover/Public/DefaultMovementSet/MovementModifiers/StanceModifier.h
++++ b/Source/Mover/Public/DefaultMovementSet/MovementModifiers/StanceModifier.h
+@@ -39,6 +39,11 @@
+ 
+     // Accepted collision surface normal; copied and serialized with movement state.
+     FVector ProneSurfaceNormal = FVector::ZeroVector;
++
++    // A new floor normal must remain consistent before changing collision pose.
++    // Keep these in the modifier so prediction/rollback restores the candidate too.
++    FVector PendingProneSurfaceNormal = FVector::ZeroVector;
++    float PendingProneSurfaceNormalMs = 0.f;
+ 	
+ 	UE_API virtual bool HasGameplayTag(FGameplayTag TagToFind, bool bExactMatch) const override;
+ 	UE_API virtual void GetGameplayTags(FGameplayTagContainer& InOutTags) const override;
+--- a/Source/Mover/Private/DefaultMovementSet/MovementModifiers/StanceModifier.cpp
++++ b/Source/Mover/Private/DefaultMovementSet/MovementModifiers/StanceModifier.cpp
+@@ -17,6 +17,19 @@
+ 
+ #include UE_INLINE_GENERATED_CPP_BY_NAME(StanceModifier)
+ 
++namespace
++{
++constexpr float ProneSurfaceNormalHoldMs = 80.f;
++constexpr float ProneSurfaceCandidateToleranceDegrees = 2.f;
++constexpr float ProneSurfaceDeadbandDegrees = 0.5f;
++
++bool AreProneSurfaceNormalsClose(const FVector& A, const FVector& B, float Degrees)
++{
++    return !A.IsNearlyZero() && !B.IsNearlyZero() &&
++        A.GetSafeNormal().Dot(B.GetSafeNormal()) >= FMath::Cos(FMath::DegreesToRadians(Degrees));
++}
++}
++
+ FStanceModifier::FStanceModifier()
+ 	: ActiveStance(EStanceMode::Crouch)
+ {
+@@ -98,7 +111,13 @@
+                     if (ProneSurfaceNormal.IsNearlyZero()) { ProneSurfaceNormal = UProneCapsuleUtils::GetDesiredSurfaceNormal(MoverComp); }
+                     CharacterMover->ProneCollisionSurfaceNormal = ProneSurfaceNormal;
+                 }
+-                else { CharacterMover->ProneCollisionSurfaceNormal = FVector::ZeroVector; }
++                else
++                {
++                    ProneSurfaceNormal = FVector::ZeroVector;
++                    PendingProneSurfaceNormal = FVector::ZeroVector;
++                    PendingProneSurfaceNormalMs = 0.f;
++                    CharacterMover->ProneCollisionSurfaceNormal = FVector::ZeroVector;
++                }
+             }
+ 			AdjustCapsule(MoverComp, CapsuleComponent->GetUnscaledCapsuleHalfHeight(), CapsuleComponent->GetUnscaledCapsuleRadius(), NewHalfHeight, NewRadius, NewEyeHeight, ActiveStance == EStanceMode::Prone);
+ 			ApplyMovementSettings(MoverComp);
+@@ -140,10 +159,38 @@
+             // Re-establish the copied/replicated normal before deriving this step's floor pose.
+             CharacterMover->ProneCollisionSurfaceNormal = ProneSurfaceNormal;
+             UProneCapsuleUtils::EnsurePhysicsGeometry(Capsule);
+-            if (ActiveStance == EStanceMode::Prone && UProneCapsuleUtils::IsCapsuleHorizontal(Capsule))
++            // Interpolated simulated proxies also call this hook. They must use
++            // the received pose, rather than overwriting it with a local floor cache.
++            const bool bCanSampleFloor = MoverComp->GetOwner() &&
++                MoverComp->GetOwner()->GetLocalRole() != ROLE_SimulatedProxy;
++            if (ActiveStance == EStanceMode::Prone && UProneCapsuleUtils::IsCapsuleHorizontal(Capsule) && bCanSampleFloor)
+             {
+-                UProneCapsuleUtils::TryAlignToSurface(Capsule, UProneCapsuleUtils::GetDesiredSurfaceNormal(MoverComp));
+-                ProneSurfaceNormal = CharacterMover->ProneCollisionSurfaceNormal;
++                const FVector SampleNormal = UProneCapsuleUtils::GetDesiredSurfaceNormal(MoverComp).GetSafeNormal();
++                if (AreProneSurfaceNormalsClose(SampleNormal, ProneSurfaceNormal, ProneSurfaceDeadbandDegrees))
++                {
++                    PendingProneSurfaceNormal = FVector::ZeroVector;
++                    PendingProneSurfaceNormalMs = 0.f;
++                }
++                else if (!SampleNormal.IsNearlyZero())
++                {
++                    if (!AreProneSurfaceNormalsClose(SampleNormal, PendingProneSurfaceNormal, ProneSurfaceCandidateToleranceDegrees))
++                    {
++                        PendingProneSurfaceNormal = SampleNormal;
++                        PendingProneSurfaceNormalMs = 0.f;
++                    }
++                    PendingProneSurfaceNormalMs = FMath::Min(ProneSurfaceNormalHoldMs,
++                        PendingProneSurfaceNormalMs + FMath::Max(0.f, TimeStep.StepMs));
++                    // Adjacent surfaces can alternate sweep contacts as the capsule
++                    // crosses their seam. Hold the accepted pose until one wins;
++                    // don't feed every contact change back into capsule geometry.
++                    if (PendingProneSurfaceNormalMs >= ProneSurfaceNormalHoldMs &&
++                        UProneCapsuleUtils::TryAlignToSurface(Capsule, SampleNormal))
++                    {
++                        ProneSurfaceNormal = CharacterMover->ProneCollisionSurfaceNormal;
++                        PendingProneSurfaceNormal = FVector::ZeroVector;
++                        PendingProneSurfaceNormalMs = 0.f;
++                    }
++                }
+             }
+         }
+         // Reapply after physics recreation or scale changes, without allocating if already correct.
+@@ -179,6 +226,8 @@
+ 	uint8 SerializedStance = static_cast<uint8>(ActiveStance);
+ 	Ar.SerializeBits(&SerializedStance, 2);
+     Ar << ProneSurfaceNormal;
++    Ar << PendingProneSurfaceNormal;
++    Ar << PendingProneSurfaceNormalMs;
+ 	if (Ar.IsLoading())
+ 	{
+ 		ActiveStance = static_cast<EStanceMode>(SerializedStance);
+--- a/Source/Mover/Private/MoveLibrary/ProneCapsuleUtils.cpp
++++ b/Source/Mover/Private/MoveLibrary/ProneCapsuleUtils.cpp
+@@ -65,10 +65,11 @@
+     {
+         const FVector Normal = Floor.HitResult.ImpactNormal.GetSafeNormal();
+         if (Floor.IsWalkableFloor() && !Normal.IsNearlyZero() && Normal.Dot(Up) > UE_KINDA_SMALL_NUMBER) { return Normal; }
+-        return Up;
+-    }
+-    // A shape change invalidates the floor cache until Walking recomputes it.
+-    // Retain the accepted pose during that gap instead of snapping level.
++    }
++    // Shape changes and seam contacts can leave the grounded floor cache missing
++    // or temporarily unwalkable. Neither is evidence to snap the capsule level.
++    // Retain the accepted pose until Walking supplies another walkable normal;
++    // confirmed airborne state above still targets Up.
+     if (CharacterMover && !CharacterMover->ProneCollisionSurfaceNormal.IsNearlyZero())
+     {
+         return CharacterMover->ProneCollisionSurfaceNormal.GetSafeNormal();
