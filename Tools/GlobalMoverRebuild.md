@@ -32,7 +32,7 @@ The script performs an incremental native build. Changed headers and C++ files t
 
 For build diagnosis, `--plan-only` exports pending compile/link actions without executing them. It leaves `last-build.json` unchanged and never records a plan as a successful build.
 
-## Native build history; normal stability rebuild pending
+## Native build history; tip/back probe rebuild pending
 
 The first native compilation reported a namespace error in `ProneCapsuleUtils.cpp`. The construction call now uses `::MakeImplicitObjectPtr<Chaos::FCapsule>`, matching UE 5.8's global template declaration. This correction is installed globally and included in the saved patch.
 
@@ -50,15 +50,19 @@ Backups, staged source, the installed-file hash report, and the additional `slop
 
 A copy of the additional patch is tracked in Git at `Tools/Patches/MoverSlopeAlignment-UE5.8.patch`.
 
-### Ground-normal transition stability (2026-10-11): native build pending
+### Ground-normal transition stability (2026-10-11): native build succeeded
 
 Source inspection found that every floor contact normal was immediately applied to the collision shape. A cached floor result that was temporarily unwalkable also returned the up direction even while the character was grounded. These paths can feed alternating surface contacts back into capsule tilt at a seam; no runtime normal trace was captured to prove that they are the only cause of the reported glitch.
 
 The new global source keeps the accepted pose until a different normal stays within a 2-degree candidate band for 80 ms of simulation time. Differences within 0.5 degrees of the accepted normal are ignored. The candidate and elapsed time are copied/serialized with the stance modifier, so restoring movement state also restores the pending transition. Grounded missing or unwalkable floor results retain the accepted normal. Confirmed airborne state still targets the up direction. Simulated proxies restore the received pose without resampling their local floor cache. Existing collision clearance checks still decide whether the new pose can be accepted; this change debounces contact switches rather than interpolating the angle.
 
-The changed source is installed globally, but the editor still uses the previously built DLL. `last-build.json` is marked `stale`. `--plan-only` exported `EditorBuild-20261011-203102-actions.json`; no compilation or linking ran. Close Unreal, run `Tools/RebuildGlobalMover.cmd` as administrator from File Explorer, and reopen the project after **BUILD SUCCEEDED**. Compilation and a new gameplay reproduction are still required before calling this fix verified. All multiplayer peers must use the same plugin revision because stance serialization includes the pending candidate state.
+The external stability rebuild succeeded at 18:12:58 UTC (`EditorBuild-20261011-211232.log`), confirmed by `WorkflowService.get_environment()` with `isStale == false`. The user subsequently reported continued switching between 5-degree and 10-degree slopes beneath the prone capsule. The debounce cannot remove feedback from selecting alignment using a sweep whose orientation itself changes with that alignment.
 
 Backups of the successfully built slope version, staged source, prior build evidence, and installed-file hashes are in `Saved/VibeUE/ProneSlopeStability-20261011`. The incremental patch is tracked at `Tools/Patches/MoverSlopeStability-UE5.8.patch`; apply it after the horizontal implementation and `MoverSlopeAlignment-UE5.8.patch` when restoring the changes. The older staging folders are historical snapshots and do not include this stability update.
+
+### Separate tip/back floor data (2026-10-11): native build pending
+
+The latest global source samples two independent downward probes and exposes cached tip/back normals, positions, and validity through `CharacterMoverComponent.GetProneFloorData`. The capsule uses the combined probe normal. Full API, sampling behavior, rollback artifacts, and verification status are documented in [ProneFloorData.md](ProneFloorData.md). Blueprint wiring is assigned to the user. The new source requires an external native rebuild; UHT generation and a build plan are not a compiled DLL.
 
 - **Prone Half Height** is now the capsule's forward **half length**, including the rounded end caps. Its existing value is preserved.
 - **Prone Capsule Radius** controls vertical half thickness and sideways width. Half length must be at least the radius.

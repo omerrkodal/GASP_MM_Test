@@ -1,0 +1,338 @@
+--- /dev/null
++++ b/Source/Mover/Public/DefaultMovementSet/ProneFloorData.h
+@@ -0,0 +1,62 @@
++// Copyright Epic Games, Inc. All Rights Reserved.
++#pragma once
++
++#include "CoreMinimal.h"
++#include "ProneFloorData.generated.h"
++
++/** World-space floor samples under fixed front/back offsets of a prone pawn. */
++USTRUCT(BlueprintType)
++struct MOVER_API FProneFloorData
++{
++    GENERATED_BODY()
++
++    UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category="Mover|Prone")
++    bool bTipHasFloor = false;
++
++    UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category="Mover|Prone")
++    bool bBackHasFloor = false;
++
++    UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category="Mover|Prone")
++    FVector TipFloorNormal = FVector::ZeroVector;
++
++    UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category="Mover|Prone")
++    FVector BackFloorNormal = FVector::ZeroVector;
++
++    UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category="Mover|Prone")
++    FVector TipFloorLocation = FVector::ZeroVector;
++
++    UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category="Mover|Prone")
++    FVector BackFloorLocation = FVector::ZeroVector;
++
++    UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category="Mover|Prone")
++    FVector CombinedFloorNormal = FVector::ZeroVector;
++
++    UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category="Mover|Prone")
++    FVector CombinedFloorLocation = FVector::ZeroVector;
++
++    bool HasFloor() const { return bTipHasFloor || bBackHasFloor; }
++
++    void UpdateCombined()
++    {
++        if (bTipHasFloor && bBackHasFloor)
++        {
++            CombinedFloorNormal = (TipFloorNormal + BackFloorNormal).GetSafeNormal();
++            CombinedFloorLocation = (TipFloorLocation + BackFloorLocation) * 0.5;
++        }
++        else if (bTipHasFloor)
++        {
++            CombinedFloorNormal = TipFloorNormal;
++            CombinedFloorLocation = TipFloorLocation;
++        }
++        else if (bBackHasFloor)
++        {
++            CombinedFloorNormal = BackFloorNormal;
++            CombinedFloorLocation = BackFloorLocation;
++        }
++        else
++        {
++            CombinedFloorNormal = FVector::ZeroVector;
++            CombinedFloorLocation = FVector::ZeroVector;
++        }
++    }
++};
+--- a/Source/Mover/Public/DefaultMovementSet/CharacterMoverComponent.h
++++ b/Source/Mover/Public/DefaultMovementSet/CharacterMoverComponent.h
+@@ -5,6 +5,7 @@
+ #include "MoverComponent.h"
+ #include "DefaultMovementSet/LayeredMoves/MontageStateProvider.h"
+ #include "MovementModifiers/StanceModifier.h"
++#include "DefaultMovementSet/ProneFloorData.h"
+ #include "CharacterMoverComponent.generated.h"
+ 
+ #define UE_API MOVER_API
+@@ -122,6 +123,16 @@
+     UPROPERTY(Transient, BlueprintReadOnly, Category = "Mover|Prone")
+     FVector ProneCollisionSurfaceNormal = FVector::ZeroVector;
+ 
++    /** Simulation cache; restored from the finalized stance state. Reading it performs no traces. */
++    UPROPERTY(Transient, BlueprintReadOnly, Category="Mover|Prone")
++    FProneFloorData CachedProneFloorData;
++
++    /** Read world-space tip/back floor probes. Return value means at least one walkable probe is valid. */
++    UFUNCTION(BlueprintPure, Category="Mover|Prone")
++    UE_API bool GetProneFloorData(FVector& TipFloorNormal, FVector& BackFloorNormal,
++        bool& TipHasFloor, bool& BackHasFloor, FVector& TipFloorLocation, FVector& BackFloorLocation,
++        FVector& FloorNormal, FVector& FloorLocation) const;
++
+ 	// Broadcast when this actor changes stances.
+ 	UPROPERTY(BlueprintAssignable, Category = Mover)
+ 	FMover_OnStanceChanged OnStanceChanged;
+--- a/Source/Mover/Private/DefaultMovementSet/CharacterMoverComponent.cpp
++++ b/Source/Mover/Private/DefaultMovementSet/CharacterMoverComponent.cpp
+@@ -83,6 +83,25 @@
+ 	return HasGameplayTag(Mover_IsProne, true);
+ }
+ 
++bool UCharacterMoverComponent::GetProneFloorData(FVector& TipFloorNormal, FVector& BackFloorNormal,
++    bool& TipHasFloor, bool& BackHasFloor, FVector& TipFloorLocation, FVector& BackFloorLocation,
++    FVector& FloorNormal, FVector& FloorLocation) const
++{
++    const FVector Up = GetUpDirection().GetSafeNormal();
++    const FVector Location = GetUpdatedComponentTransform().GetLocation();
++    const bool bCanUseData = IsProne() && IsOnGround();
++    TipHasFloor = bCanUseData && CachedProneFloorData.bTipHasFloor;
++    BackHasFloor = bCanUseData && CachedProneFloorData.bBackHasFloor;
++    TipFloorNormal = TipHasFloor ? CachedProneFloorData.TipFloorNormal : Up;
++    BackFloorNormal = BackHasFloor ? CachedProneFloorData.BackFloorNormal : Up;
++    TipFloorLocation = TipHasFloor ? CachedProneFloorData.TipFloorLocation : Location;
++    BackFloorLocation = BackHasFloor ? CachedProneFloorData.BackFloorLocation : Location;
++    const bool bHasFloor = TipHasFloor || BackHasFloor;
++    FloorNormal = bHasFloor ? CachedProneFloorData.CombinedFloorNormal : Up;
++    FloorLocation = bHasFloor ? CachedProneFloorData.CombinedFloorLocation : Location;
++    return bHasFloor;
++}
++
+ bool UCharacterMoverComponent::IsFlying() const
+ {
+ 	return HasGameplayTag(Mover_IsFlying, true);
+@@ -252,10 +271,12 @@
+ void UCharacterMoverComponent::OnMoverPostFinalize(const FMoverSyncState& SyncState, const FMoverAuxStateContext& AuxState)
+ {
+ 	UpdateSyncedMontageState(GetLastTimeStep(), SyncState, AuxState);
++    CachedProneFloorData = FProneFloorData();
+     if (const FStanceModifier* StanceModifier = FindMovementModifierByType<FStanceModifier>())
+     {
+         if (StanceModifier->ActiveStance == EStanceMode::Prone)
+         {
++            CachedProneFloorData = StanceModifier->ProneFloorData;
+             ProneCollisionSurfaceNormal = StanceModifier->ProneSurfaceNormal;
+             UProneCapsuleUtils::EnsurePhysicsGeometry(Cast<UCapsuleComponent>(GetUpdatedComponent()));
+         }
+--- a/Source/Mover/Public/MoveLibrary/ProneCapsuleUtils.h
++++ b/Source/Mover/Public/MoveLibrary/ProneCapsuleUtils.h
+@@ -1,6 +1,7 @@
+ // Copyright Epic Games, Inc. All Rights Reserved.
+ #pragma once
+ #include "Kismet/BlueprintFunctionLibrary.h"
++#include "DefaultMovementSet/ProneFloorData.h"
+ #include "ProneCapsuleUtils.generated.h"
+ 
+ class UCapsuleComponent;
+@@ -28,6 +29,8 @@
+     static bool IsWithinFootprint(const UCapsuleComponent* Capsule, const FVector& Location, const FVector& ImpactPoint, float Radius, const FVector& UpDirection);
+     // Rotation for a prone capsule whose long axis is tangent to SurfaceNormal.
+     static FQuat GetProneRotation(const FQuat& RootRotation, const FVector& SurfaceNormal);
++    // Exactly two downward queries at fixed offsets; never based on the tilted capsule axis.
++    static FProneFloorData SampleProneFloorData(const UMoverComponent* MoverComp, const UCapsuleComponent* Capsule);
+     static FVector GetDesiredSurfaceNormal(const UMoverComponent* MoverComp);
+     static bool TryAlignToSurface(UCapsuleComponent* Capsule, const FVector& SurfaceNormal);
+     static void SetHorizontal(UCapsuleComponent* Capsule, bool bHorizontal);
+--- a/Source/Mover/Private/MoveLibrary/ProneCapsuleUtils.cpp
++++ b/Source/Mover/Private/MoveLibrary/ProneCapsuleUtils.cpp
+@@ -2,6 +2,7 @@
+ #include "MoveLibrary/ProneCapsuleUtils.h"
+ #include "Components/CapsuleComponent.h"
+ #include "DefaultMovementSet/CharacterMoverComponent.h"
++#include "DefaultMovementSet/Settings/CommonLegacyMovementSettings.h"
+ #include "MoveLibrary/MoverBlackboard.h"
+ #include "MoverSimulationTypes.h"
+ #include "MoverComponent.h"
+@@ -53,12 +54,65 @@
+     return RootRotation * FQuat::FindBetweenNormals(FVector::UpVector, RootRotation.UnrotateVector(Axis));
+ }
+ 
++FProneFloorData UProneCapsuleUtils::SampleProneFloorData(const UMoverComponent* MoverComp, const UCapsuleComponent* Capsule)
++{
++    FProneFloorData Data;
++    if (!MoverComp || !Capsule || !IsCapsuleHorizontal(Capsule) || !Capsule->GetWorld()) { return Data; }
++    const UCharacterMoverComponent* CharacterMover = Cast<UCharacterMoverComponent>(MoverComp);
++    if (CharacterMover && !CharacterMover->IsOnGround()) { return Data; }
++
++    const FVector Up = MoverComp->GetUpDirection().GetSafeNormal();
++    const FVector Facing = FVector::VectorPlaneProject(Capsule->GetComponentQuat().GetAxisX(), Up).GetSafeNormal();
++    if (Up.IsNearlyZero() || Facing.IsNearlyZero()) { return Data; }
++    const UCommonLegacyMovementSettings* Settings = MoverComp->FindSharedSettings<UCommonLegacyMovementSettings>();
++    const float FloorReach = Settings ? FMath::Max(0.f, Settings->FloorSweepDistance) : 40.f;
++    const float MaxSlopeCosine = Settings ? Settings->MaxWalkSlopeCosine : 0.71f;
++    const float HalfLength = Capsule->GetScaledCapsuleHalfHeight();
++    const FVector Center = Capsule->GetComponentLocation();
++    FCollisionQueryParams Params(SCENE_QUERY_STAT(ProneFloorProbes), false, Capsule->GetOwner());
++    FCollisionResponseParams Response;
++    UMovementUtils::InitCollisionParams(Capsule, Params, Response);
++
++    auto Sample = [&](float Direction, bool& HasFloor, FVector& Normal, FVector& ImpactPoint)
++    {
++        // Both horizontal offsets and the vertical search bounds are independent
++        // of accepted collision tilt. Changing tilt cannot move these samples along the ground.
++        const FVector Anchor = Center + Facing * (Direction * HalfLength);
++        const FVector Start = Anchor + Up * HalfLength;
++        const FVector End = Anchor - Up * (HalfLength + FloorReach);
++        FHitResult Hit;
++        if (Capsule->GetWorld()->LineTraceSingleByChannel(Hit, Start, End,
++            Capsule->GetCollisionObjectType(), Params, Response) &&
++            UFloorQueryUtils::IsHitSurfaceWalkable(Hit, Up, MaxSlopeCosine))
++        {
++            HasFloor = true;
++            Normal = Hit.ImpactNormal.GetSafeNormal();
++            ImpactPoint = Hit.ImpactPoint;
++        }
++    };
++    Sample(1.f, Data.bTipHasFloor, Data.TipFloorNormal, Data.TipFloorLocation);
++    Sample(-1.f, Data.bBackHasFloor, Data.BackFloorNormal, Data.BackFloorLocation);
++    Data.UpdateCombined();
++    return Data;
++}
++
+ FVector UProneCapsuleUtils::GetDesiredSurfaceNormal(const UMoverComponent* MoverComp)
+ {
+     if (!MoverComp) { return FVector::UpVector; }
+     const FVector Up = MoverComp->GetUpDirection().GetSafeNormal();
+     const UCharacterMoverComponent* CharacterMover = Cast<UCharacterMoverComponent>(MoverComp);
+     if (CharacterMover && !CharacterMover->IsOnGround()) { return Up; }
++    if (CharacterMover && IsCapsuleHorizontal(Cast<UCapsuleComponent>(MoverComp->GetUpdatedComponent())))
++    {
++        // Alignment comes exclusively from the independent probes while prone.
++        // The whole capsule floor sweep continues to handle physical support.
++        if (CharacterMover->CachedProneFloorData.HasFloor())
++        {
++            return CharacterMover->CachedProneFloorData.CombinedFloorNormal;
++        }
++        return CharacterMover->ProneCollisionSurfaceNormal.IsNearlyZero() ? Up :
++            CharacterMover->ProneCollisionSurfaceNormal.GetSafeNormal();
++    }
+     FFloorCheckResult Floor;
+     const UMoverBlackboard* Blackboard = MoverComp->GetSimBlackboard();
+     if (Blackboard && Blackboard->TryGet(CommonBlackboard::LastFloorResult, Floor))
+--- a/Source/Mover/Public/DefaultMovementSet/MovementModifiers/StanceModifier.h
++++ b/Source/Mover/Public/DefaultMovementSet/MovementModifiers/StanceModifier.h
+@@ -3,6 +3,7 @@
+ #pragma once
+ 
+ #include "MovementModifier.h"
++#include "DefaultMovementSet/ProneFloorData.h"
+ #include "StanceModifier.generated.h"
+ 
+ #define UE_API MOVER_API
+@@ -44,6 +45,9 @@
+     // Keep these in the modifier so prediction/rollback restores the candidate too.
+     FVector PendingProneSurfaceNormal = FVector::ZeroVector;
+     float PendingProneSurfaceNormalMs = 0.f;
++
++    // Probe results belong to copied/replicated simulation state, not an external tick cache.
++    FProneFloorData ProneFloorData;
+ 	
+ 	UE_API virtual bool HasGameplayTag(FGameplayTag TagToFind, bool bExactMatch) const override;
+ 	UE_API virtual void GetGameplayTags(FGameplayTagContainer& InOutTags) const override;
+--- a/Source/Mover/Private/DefaultMovementSet/MovementModifiers/StanceModifier.cpp
++++ b/Source/Mover/Private/DefaultMovementSet/MovementModifiers/StanceModifier.cpp
+@@ -113,6 +113,8 @@
+                 }
+                 else
+                 {
++                    ProneFloorData = FProneFloorData();
++                    CharacterMover->CachedProneFloorData = ProneFloorData;
+                     ProneSurfaceNormal = FVector::ZeroVector;
+                     PendingProneSurfaceNormal = FVector::ZeroVector;
+                     PendingProneSurfaceNormalMs = 0.f;
+@@ -145,6 +147,10 @@
+ 		if (GetStanceDimensions(MoverComp, EStanceMode::Invalid, StandingHalfHeight, StandingRadius, StandingEyeHeight))
+ 		{
+ 			AdjustCapsule(MoverComp, CapsuleComponent->GetUnscaledCapsuleHalfHeight(), CapsuleComponent->GetUnscaledCapsuleRadius(), StandingHalfHeight, StandingRadius, StandingEyeHeight, false);
++            if (UCharacterMoverComponent* CharacterMover = Cast<UCharacterMoverComponent>(MoverComp))
++            {
++                CharacterMover->CachedProneFloorData = FProneFloorData();
++            }
+ 			RevertMovementSettings(MoverComp);
+ 		}
+ 	}
+@@ -158,12 +164,13 @@
+         {
+             // Re-establish the copied/replicated normal before deriving this step's floor pose.
+             CharacterMover->ProneCollisionSurfaceNormal = ProneSurfaceNormal;
++            CharacterMover->CachedProneFloorData = ProneFloorData;
+             UProneCapsuleUtils::EnsurePhysicsGeometry(Capsule);
+-            // Interpolated simulated proxies also call this hook. They must use
+-            // the received pose, rather than overwriting it with a local floor cache.
+-            const bool bCanSampleFloor = MoverComp->GetOwner() &&
++            // Simulated proxies restore the received samples and accepted tilt.
++            // Local simulation derives tilt from last step's post-movement probes.
++            const bool bCanUpdateAlignment = MoverComp->GetOwner() &&
+                 MoverComp->GetOwner()->GetLocalRole() != ROLE_SimulatedProxy;
+-            if (ActiveStance == EStanceMode::Prone && UProneCapsuleUtils::IsCapsuleHorizontal(Capsule) && bCanSampleFloor)
++            if (ActiveStance == EStanceMode::Prone && UProneCapsuleUtils::IsCapsuleHorizontal(Capsule) && bCanUpdateAlignment)
+             {
+                 const FVector SampleNormal = UProneCapsuleUtils::GetDesiredSurfaceNormal(MoverComp).GetSafeNormal();
+                 if (AreProneSurfaceNormalsClose(SampleNormal, ProneSurfaceNormal, ProneSurfaceDeadbandDegrees))
+@@ -180,9 +187,9 @@
+                     }
+                     PendingProneSurfaceNormalMs = FMath::Min(ProneSurfaceNormalHoldMs,
+                         PendingProneSurfaceNormalMs + FMath::Max(0.f, TimeStep.StepMs));
+-                    // Adjacent surfaces can alternate sweep contacts as the capsule
+-                    // crosses their seam. Hold the accepted pose until one wins;
+-                    // don't feed every contact change back into capsule geometry.
++                    // Retain a short stability window for independent probe samples
++                    // near triangle edges. Collision tilt no longer selects the contact
++                    // normal used for alignment.
+                     if (PendingProneSurfaceNormalMs >= ProneSurfaceNormalHoldMs &&
+                         UProneCapsuleUtils::TryAlignToSurface(Capsule, SampleNormal))
+                     {
+@@ -211,6 +218,18 @@
+ void FStanceModifier::OnPostMovement(UMoverComponent* MoverComp, const FMoverTimeStep& TimeStep, const FMoverSyncState& SyncState, const FMoverAuxStateContext& AuxState)
+ {
+ 	FMovementModifierBase::OnPostMovement(MoverComp, TimeStep, SyncState, AuxState);
++    if (UCharacterMoverComponent* CharacterMover = Cast<UCharacterMoverComponent>(MoverComp))
++    {
++        if (ActiveStance == EStanceMode::Prone && MoverComp->GetOwner() &&
++            MoverComp->GetOwner()->GetLocalRole() != ROLE_SimulatedProxy)
++        {
++            // Sample only once per simulation substep, at its final location.
++            ProneFloorData = UProneCapsuleUtils::SampleProneFloorData(MoverComp,
++                Cast<UCapsuleComponent>(MoverComp->GetUpdatedComponent()));
++        }
++        CharacterMover->CachedProneFloorData = ActiveStance == EStanceMode::Prone ?
++            ProneFloorData : FProneFloorData();
++    }
+ }
+ 
+ FMovementModifierBase* FStanceModifier::Clone() const
+@@ -228,6 +247,17 @@
+     Ar << ProneSurfaceNormal;
+     Ar << PendingProneSurfaceNormal;
+     Ar << PendingProneSurfaceNormalMs;
++    uint8 FloorFlags = (ProneFloorData.bTipHasFloor ? 1 : 0) | (ProneFloorData.bBackHasFloor ? 2 : 0);
++    Ar.SerializeBits(&FloorFlags, 2);
++    if (Ar.IsLoading())
++    {
++        ProneFloorData = FProneFloorData();
++        ProneFloorData.bTipHasFloor = (FloorFlags & 1) != 0;
++        ProneFloorData.bBackHasFloor = (FloorFlags & 2) != 0;
++    }
++    if (ProneFloorData.bTipHasFloor) { Ar << ProneFloorData.TipFloorNormal << ProneFloorData.TipFloorLocation; }
++    if (ProneFloorData.bBackHasFloor) { Ar << ProneFloorData.BackFloorNormal << ProneFloorData.BackFloorLocation; }
++    ProneFloorData.UpdateCombined();
+ 	if (Ar.IsLoading())
+ 	{
+ 		ActiveStance = static_cast<EStanceMode>(SerializedStance);
