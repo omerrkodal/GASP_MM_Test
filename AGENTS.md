@@ -308,3 +308,9 @@ crash handler — MCP will hang; relaunch); fresh and small → the editor is fi
 <!-- Prone probe gotcha: Sample fixed tip/back downward probes once after movement; copy/serialize their data and derive capsule alignment from the combined normal. The native probe version built successfully; user owns Blueprint wiring and gameplay confirmation. -->
 
 <!-- Prone output struct gotcha: GetProneFloorData exposes separate Tip/Back/Center native Mover Floor Data structs (Normal, Location, Does Hit?), independently sampled each grounded prone substep. Center is an actual center probe, not an averaged midpoint. Capsule alignment keeps tip/both/back then center fallback internally. S_FloorData is a different Blueprint type; split/break native structs or convert with Make S_FloorData. Rebuild and refresh old getter nodes; center sample serialization requires matching multiplayer plugin revisions. -->
+
+<!-- Control Rig slope gotcha: Mover normals are world-space; inverse mesh-world rotation converts them to rig space. For AdditiveLocal bone offsets use inverse(CurrentGlobalBoneRotation) * RigSpaceOffset * CurrentGlobalBoneRotation; read the spine after modifying root to avoid compounding Back and Tip tilt. -->
+
+<!-- Crawl contact gotcha: Convert Tip/Back impact positions with From World Location. After slope rotations, anchor pelvis to Back clearance with a root translation, then FABRIK spine_01..spine_05 toward Tip. Keep FABRIK weight 1 and bSetEffectorTransform false to preserve segment lengths and chest rotation; blend the target offset instead. -->
+
+<!-- RigVM smoothing gotcha: Add struct member variables with full type paths (e.g. /Script/CoreUObject.Vector), not FVector; the short name asserts in UE 5.8. Floor filters use alpha=1-exp(-dt/time), normalize normals, and reset initialization on missing contact. Stored samples feed both rotation and placement. -->
