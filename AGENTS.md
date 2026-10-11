@@ -307,4 +307,4 @@ crash handler — MCP will hang; relaunch); fresh and small → the editor is fi
 
 <!-- Prone probe gotcha: Sample fixed tip/back downward probes once after movement; copy/serialize their data and derive capsule alignment from the combined normal. The native probe version built successfully; user owns Blueprint wiring and gameplay confirmation. -->
 
-<!-- Prone output struct gotcha: GetProneFloorData now returns Tip, Back, Combined as native Mover Floor Data structs (Does Hit?, Normal, Location). S_FloorData has matching fields but is a different Blueprint type; split/break native structs or convert with Make S_FloorData. Rebuild and refresh old getter nodes after this API change. -->
+<!-- Prone output struct gotcha: GetProneFloorData returns one native Mover Floor Data struct (Normal, Location, Does Hit?), selecting tip/both/back in C++ with a conditional center probe when both miss. S_FloorData has matching fields but is a different Blueprint type; split/break the native struct or convert with Make S_FloorData. Rebuild and refresh old getter nodes after this API change; center sample serialization requires matching multiplayer plugin revisions. -->
