@@ -313,4 +313,6 @@ crash handler — MCP will hang; relaunch); fresh and small → the editor is fi
 
 <!-- Crawl contact gotcha: Convert Tip/Back impact positions with From World Location. After slope rotations, anchor pelvis to Back clearance with a root translation, then FABRIK spine_01..spine_05 toward Tip. Keep FABRIK weight 1 and bSetEffectorTransform false to preserve segment lengths and chest rotation; blend the target offset instead. -->
 
-<!-- RigVM smoothing gotcha: Add struct member variables with full type paths (e.g. /Script/CoreUObject.Vector), not FVector; the short name asserts in UE 5.8. Floor filters use alpha=1-exp(-dt/time), normalize normals, and reset initialization on missing contact. Stored samples feed both rotation and placement. -->
+<!-- RigVM smoothing gotcha: Add struct member variables with full type paths (e.g. /Script/CoreUObject.Vector), not FVector; the short name asserts in UE 5.8. Floor filters use alpha=1-exp(-dt/time), normalize normals, and retain initialized history across missing contacts; use Center fallback and a short hold followed by a smooth release. Stored samples feed both rotation and placement. -->
+
+<!-- Crawl lower-body gotcha: A shared 20 cm root/chest cap can leave the legs suspended while chest IK compensates. Give body height its own cap (80 cm default), retain filter initialization across contact loss, use each end or Center, and hold briefly then fade both rotation and contact correction. Equal normals require no special rotation branch. -->
