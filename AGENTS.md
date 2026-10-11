@@ -305,4 +305,6 @@ crash handler — MCP will hang; relaunch); fresh and small → the editor is fi
 
 <!-- Prone normal transition gotcha: Keep the candidate in serialized stance state (80ms, 2-degree candidate band, 0.5-degree deadband), and never resample local floors in simulated-proxy modifier hooks. The stability version compiled successfully; debounce alone did not eliminate competing sweep contacts. -->
 
-<!-- Prone probe gotcha: Sample fixed tip/back downward probes once after movement; copy/serialize their data and derive capsule alignment from the combined normal. GetProneFloorData reads finalized cached outputs without tracing. User owns Blueprint wiring; the new probe source still needs an external native rebuild. -->
+<!-- Prone probe gotcha: Sample fixed tip/back downward probes once after movement; copy/serialize their data and derive capsule alignment from the combined normal. The native probe version built successfully; user owns Blueprint wiring and gameplay confirmation. -->
+
+<!-- Prone output struct gotcha: GetProneFloorData now returns Tip, Back, Combined as native Mover Floor Data structs (Does Hit?, Normal, Location). S_FloorData has matching fields but is a different Blueprint type; split/break native structs or convert with Make S_FloorData. Rebuild and refresh old getter nodes after this API change. -->

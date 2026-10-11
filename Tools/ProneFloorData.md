@@ -10,14 +10,18 @@ Close Unreal and run `Tools/RebuildGlobalMover.cmd` as administrator from File E
 
 | Output | Meaning |
 |---|---|
-| `TipFloorNormal` / `BackFloorNormal` | Separate world-space walkable surface normals. |
-| `TipHasFloor` / `BackHasFloor` | Whether that probe has a valid walkable hit. |
-| `TipFloorLocation` / `BackFloorLocation` | Separate world-space impact points. |
-| `FloorNormal` | Normalized sum when both probes are valid; otherwise the valid probe's normal. |
-| `FloorLocation` | Midpoint of both valid impact points, or the single valid impact point. It is derived data, not a third collision hit. |
+| `Tip` | `Mover Floor Data` struct for the front probe. |
+| `Back` | `Mover Floor Data` struct for the rear probe. |
+| `Combined` | `Mover Floor Data` derived from the valid tip/back samples. |
 | `Return Value` | At least one valid probe while prone and grounded. |
 
-Missing probe normals return Mover's up direction and missing locations return the updated component's position; check the validity outputs. Outside prone/grounded state, validity and return value are false. The Blueprint getter never initiates a floor query.
+Each output uses native `FMoverFloorData` (Blueprint display name **Mover Floor Data**) with **Does Hit?**, **Normal**, and **Location**. This matches the fields of the project's `/Game/Blueprints/Data/S_FloorData`, but Unreal treats native and Blueprint-defined structs as different types. Split the native pins or use **Break Mover Floor Data**. If retaining `S_FloorData` variables, connect those fields to **Make S_FloorData**. The global plugin does not load or depend on the project struct asset.
+
+`Combined.Does Hit?` is true if either probe is valid. With both valid, `Combined.Normal` is the normalized sum of their normals and `Combined.Location` is the midpoint between their impact points. With one valid, Combined copies that sample. The midpoint is calculated data rather than a third collision hit.
+
+Missing sample normals return Mover's up direction and missing locations return the updated component's position; check **Does Hit?** before using each sample. Outside prone/grounded state, all Does Hit? flags and Return Value are false. The Blueprint getter never initiates a floor query.
+
+After rebuilding, **Refresh Node** on existing Get Prone Floor Data nodes. Their old separate vector/bool pins have been replaced by the three struct outputs, so old pin connections need manual rewiring. The user owns Blueprint implementation; the `S_FloorData` asset and function graphs were not modified for this output change.
 
 Before the user narrowed the task to C++, six variables were added and saved in `SandboxCharacter_Mover`: `TipFloorNormal`, `BackFloorNormal`, `TipHasFloor`, `BackHasFloor`, `TipFloorLocation`, `BackFloorLocation`. The Blueprint compiled to `BS_UP_TO_DATE`. No function graph wiring or Control Rig edits were applied.
 
@@ -47,6 +51,8 @@ The incremental patch is `Tools/Patches/MoverProneFloorProbes-UE5.8.patch`; appl
 
 ## Verification status
 
-The previous stability build succeeded at 18:12:58 UTC on 2026-10-11 (`EditorBuild-20261011-211232.log`). The probe source supersedes that DLL, and `last-build.json` is marked `stale`.
+The native probe build succeeded at 18:44:55 UTC on 2026-10-11 (`EditorBuild-20261011-214424.log`), confirmed by WorkflowService with `isStale == false` before changing the output API. That DLL SHA-256 was `48aea6186adbcbb71ef67faee53af94fb0a01352360c1ed2a0ae8c5b66d3e4da`. This proves compilation of the probe version; no gameplay pass is recorded here.
 
-UBT exported `EditorBuild-20261011-213546-actions.json` with six compile and eight link actions, including the global Mover DLL. UHT generated reflection for `GetProneFloorData` and `FProneFloorData`. This is not a successful C++ compilation/link or a runtime pass. The running editor does not yet expose the getter. Native rebuild and gameplay confirmation remain pending.
+The newer struct-output API supersedes that DLL, and `last-build.json` is marked `stale`. UBT exported `EditorBuild-20261011-220202-actions.json`; no native compilation/link ran. A new rebuild is required before the editor exposes Tip, Back, and Combined struct pins.
+
+The incremental output-API patch is `Tools/Patches/MoverProneFloorStructOutputs-UE5.8.patch`, applied after the probe patch. Backups of the three modified files, staged source, installed hashes, and successful prior build evidence are in `Saved/VibeUE/ProneFloorStructOutputs-20261011`. Sampling and stance serialization were not changed by this patch.
