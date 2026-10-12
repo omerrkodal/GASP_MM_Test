@@ -222,3 +222,13 @@ Draw accepted normals, contact planes, body anchors, and final targets during te
 The recommendation uses the project's AGENTS.md gotchas, existing [floor-data documentation](ProneFloorData.md), asset registry discovery of `/Game/Blueprints/ControlRigs/CR_Crawl` and `CR_Crawl_TwoTrace`, and the Epic references linked at the relevant steps. No rig graph audit, asset edit, gameplay pass, or tier benchmark was performed for this documentation request.
 
 WorkflowService reported the latest native Mover build as `succeeded`, `isStale=false`, finished `2026-10-11T19:27:19.120809+00:00`, with log `Saved/VibeUE/Builds/GlobalMover/EditorBuild-20261011-222652.log`. This is existing native compilation evidence, not validation of the proposed rig design.
+
+## Implemented step 1: Back-driven root rotation (2026-10-12)
+
+`CR_Crawl_TwoTrace` now executes only `ApplyBackRootRotation` in Forward Solve. The labelled **STEP 1 - Back root alignment** group is above the earlier experiment nodes. Back Data.Normal is rotated into rig space using From World Rotation with an identity quaternion, then normalized. The incoming root quaternion rotates rig +Z to obtain its current support axis; a shortest-arc quaternion maps that axis to the Back normal. `TargetRoot = Delta * IncomingRoot` is applied with Set Rotation in Global Space, propagating to children. Back Data.Does Hit? supplies weight 0 or 1. Tip Rotation and Back Rotation inputs do not drive this path. No position offsets, spine IK, smoothing, or new traces were added.
+
+The character Update_FloorValues Back-miss execution path now also reaches Set Back Floor Data, preventing the rig from receiving an old true hit flag after contact loss. Character and AnimBP compile checks reported UpToDate; the edited rig and character assets were saved.
+
+Seven native compiled-VM fixtures passed: flat, forward 30 degrees, side 45 degrees, combined slope, yawed root, pre-tilted root, and missing Back contact. Maximum support-normal error was below 0.000002 degrees, and root translation error was zero. These fixtures use an identity component world transform; they verify graph execution and residual composition, not live gameplay or mesh-bound world conversion. Live crawl animation still needs visual confirmation before step 2.
+
+Rollback graph snapshots and evidence: `Saved/VibeUE/ProneRootStep1-20261012/`. Restore the character miss path from `Back Hit? else -> Set Back Floor Data` to its recorded prior `Back Hit? else -> Center Hit?` only when rolling back this step. Preserve other existing asset edits.
