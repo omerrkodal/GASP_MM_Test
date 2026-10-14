@@ -324,3 +324,15 @@ crash handler — MCP will hang; relaunch); fresh and small → the editor is fi
 <!-- Prone root step-1 gotcha: CR_Crawl_TwoTrace uses Back normal in rig space and Delta(CurrentRootUp -> BackNormal) * IncomingRoot with Global Set Rotation; update Back Floor Data on misses too so DoesHit gates the current frame rather than a stale cached hit. Native VM fixtures passed; live crawl confirmation remains separate. -->
 
 <!-- Crawl spine residual gotcha: For Global spine rotation use Delta(corrected root +Z -> Tip normal in rig space) * CurrentSpineGlobalRotation after the root setter; never substitute the spine local Z or world floor normal for body-up, and never invert the final absolute target. Tip/Back DoesHit gate their setters; refresh Tip floor data on misses. Inline VM fixtures and neutral preview passed; live prone slopes remain a separate check. -->
+
+<!-- CR_Crawl1 alpha gotcha: Use Interp Alpha only for temporal sample filtering; identity-to-target quaternion blends use Floor Contact Blend. Back normal interpolation reads Smoothed Back Normal, and Tip/Back normal targets come from their Center fallback selectors. -->
+
+<!-- Back/Center blend gotcha: Accumulate Lerp uses Back only as initialization and eventually follows Center. Blend current Back/Center normals with vector Interpolate at 0.25, normalize, gate each probe by DoesHit, and feed the selected target into the existing temporal Back-normal filter. -->
+
+<!-- Root height gotcha: Never feed root-minus-hit directly to absolute Set Translation. Use pelvis plane distance dot(P-H,N), clearance correction divided by dot(world-up,N), and target=current root+up*correction. Convert hit as a position and normal/up by mesh rotation only; gate the setter on current Back DoesHit. -->
+
+<!-- Crawl Tip reach gotcha: Back-only height clips the chest before Back enters a ramp. Add Center minimum clearance, Tip spine_01..spine_05 FABRIK at weight 1 with bSetEffectorTransform false, reach-based root lift, and a final upward-only Center/Tip clearance correction after FABRIK. Six transient native contact fixtures passed with preserved segment lengths; live animation/feet remain separate. -->
+
+<!-- Crawl floating gotcha: A positive-only, fixed-horizontal chest target forces excess root lift and cannot follow descending contacts. Center now solves spine_01..spine_03, Tip solves spine_03..spine_05; targets project onto contact planes with reach-aware lateral retraction. Center may rise to support upper-spine reach before root fallback. Eight transient fixtures preserved lengths/clearance; some separation remains at incompatible reach constraints, and live crawl/leg IK need separate verification. -->
+
+<!-- Simple foot IK test gotcha: CR_Crawl1 Foot IK Test runs after root translation, gates on raw Back DoesHit, preserves current world foot XY and rotation, targets Back hit Z + Foot IK Test Height (3cm default), and uses animated calf positions as knee poles. TwoBoneIKSimplePerItem uses left -X/right +X, stretch off, and separate local getters; Foot IK Test Alpha=0 disables. Three native fixtures passed; live crawl verification remains separate. -->
