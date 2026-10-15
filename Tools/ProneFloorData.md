@@ -37,6 +37,29 @@ Before the user narrowed the task to C++, six variables were added and saved in 
 
 All multiplayer peers need the same plugin revision because the stance serialization now includes the probe results. Async/ChaosMover and multiplayer behavior remain unverified.
 
+## Visualize the floor probes
+
+After rebuilding the global plugin, open the gameplay console in PIE:
+
+```text
+mover.debug.DrawProneFloorTraces 1
+```
+
+Use `mover.debug.DrawProneFloorTraces 0` to turn it off. The command draws the existing simulation queries without adding collision traces:
+
+- **Tip:** cyan start point and walkable-hit trace line.
+- **Back:** magenta start point and walkable-hit trace line.
+- **Center:** yellow start point and walkable-hit trace line.
+- **Green sphere and arrow:** a walkable impact point and its world-space normal.
+- **Red line / MISS:** that probe found no blocking hit.
+- **Orange line / UNWALKABLE:** it hit a surface rejected by the walkability check; the contact/normal are still drawn for diagnosis.
+
+Each trace has a Tip/Back/Center label and result. Drawings last one frame and update while simulation runs; no persistent trails are accumulated. When the horizontal prone capsule is not grounded, a **SKIPPED (Mover is not grounded)** label is drawn instead: no probe queries run in that state. This distinguishes an actual Center miss from the shared grounded gate suppressing sampling. Simulated proxies do not run local probes, so use the locally simulated pawn to see its queries. Drawing requires a development build with debug drawing enabled.
+
+The independent capsule visualization remains `mover.debug.DrawProneCapsule 1`.
+
+The incremental source patch is `Tools/Patches/MoverProneFloorTraceDebug-UE5.8.patch`, applied after the 2026-10-15 prone component/physics dimension settings change. Backups, staged source, installed-file hashes, and prior successful build evidence are in `Saved/VibeUE/ProneFloorTraceDebug-20261015`. This debug revision requires an external native rebuild; the earlier successful build does not include the command. No gameplay screenshot or native build of this revision has been recorded yet.
+
 ## Native files and rollback artifacts
 
 Under `Source/Mover`:

@@ -1,0 +1,84 @@
+--- a/Source/Mover/Private/MoveLibrary/ProneCapsuleUtils.cpp
++++ b/Source/Mover/Private/MoveLibrary/ProneCapsuleUtils.cpp
+@@ -22,6 +22,9 @@
+ const FName HorizontalCapsuleTag(TEXT("Mover.HorizontalProneCapsule"));
+ TAutoConsoleVariable<int32> CVarDrawProneCapsule(TEXT("mover.debug.DrawProneCapsule"), 0,
+     TEXT("Draw Mover's actual capsule collision orientation: 0 off, 1 on."), ECVF_Cheat);
++TAutoConsoleVariable<int32> CVarDrawProneFloorTraces(TEXT("mover.debug.DrawProneFloorTraces"), 0,
++    TEXT("Draw actual prone floor probes: 0 off, 1 on. Tip cyan, Back magenta, Center yellow; "
++         "green walkable hits/normals, red misses, orange unwalkable hits. Shows skipped grounded sampling."), ECVF_Cheat);
+ UCharacterMoverComponent* FindCharacterMover(const UCapsuleComponent* Capsule)
+ {
+     return Capsule && Capsule->GetOwner() ? Capsule->GetOwner()->FindComponentByClass<UCharacterMoverComponent>() : nullptr;
+@@ -118,7 +121,11 @@
+     FCollisionResponseParams Response;
+     UMovementUtils::InitCollisionParams(Capsule, Params, Response);
+ 
+-    auto Sample = [&](float Direction, bool& HasFloor, FVector& Normal, FVector& ImpactPoint)
++#if ENABLE_DRAW_DEBUG
++    const bool bDrawTraces = CVarDrawProneFloorTraces.GetValueOnAnyThread() != 0 && IsInGameThread();
++#endif
++    auto Sample = [&](float Direction, const TCHAR* ProbeName, const FColor& ProbeColor,
++        bool& HasFloor, FVector& Normal, FVector& ImpactPoint)
+     {
+         // Both horizontal offsets and the vertical search bounds are independent
+         // of accepted collision tilt. Changing tilt cannot move these samples along the ground.
+@@ -126,18 +133,36 @@
+         const FVector Start = Anchor + Up * HalfLength;
+         const FVector End = Anchor - Up * (HalfLength + FloorReach);
+         FHitResult Hit;
+-        if (Capsule->GetWorld()->LineTraceSingleByChannel(Hit, Start, End,
+-            Capsule->GetCollisionObjectType(), Params, Response) &&
+-            UFloorQueryUtils::IsHitSurfaceWalkable(Hit, Up, MaxSlopeCosine))
++        const bool bTraceHit = Capsule->GetWorld()->LineTraceSingleByChannel(Hit, Start, End,
++            Capsule->GetCollisionObjectType(), Params, Response);
++        if (bTraceHit && UFloorQueryUtils::IsHitSurfaceWalkable(Hit, Up, MaxSlopeCosine))
+         {
+             HasFloor = true;
+             Normal = Hit.ImpactNormal.GetSafeNormal();
+             ImpactPoint = Hit.ImpactPoint;
+         }
++#if ENABLE_DRAW_DEBUG
++        if (bDrawTraces)
++        {
++            UWorld* World = Capsule->GetWorld();
++            const FColor ResultColor = HasFloor ? FColor::Green : (bTraceHit ? FColor::Orange : FColor::Red);
++            const TCHAR* Status = HasFloor ? TEXT("HIT") : (bTraceHit ? TEXT("UNWALKABLE") : TEXT("MISS"));
++            DrawDebugLine(World, Start, End, HasFloor ? ProbeColor : ResultColor, false, 0.f, 0, 1.5f);
++            DrawDebugPoint(World, Start, 7.f, ProbeColor, false, 0.f);
++            DrawDebugString(World, Start + Up * 5.f, FString::Printf(TEXT("%s: %s"), ProbeName, Status),
++                nullptr, ResultColor, 0.f, true);
++            if (bTraceHit)
++            {
++                DrawDebugSphere(World, Hit.ImpactPoint, 3.f, 8, ResultColor, false, 0.f, 0, 1.f);
++                DrawDebugDirectionalArrow(World, Hit.ImpactPoint, Hit.ImpactPoint + Hit.ImpactNormal * 25.f,
++                    6.f, ResultColor, false, 0.f, 0, 1.5f);
++            }
++        }
++#endif
+     };
+-    Sample(1.f, Data.bTipHasFloor, Data.TipFloorNormal, Data.TipFloorLocation);
+-    Sample(-1.f, Data.bBackHasFloor, Data.BackFloorNormal, Data.BackFloorLocation);
+-    Sample(0.f, Data.bCenterHasFloor, Data.CenterFloorNormal, Data.CenterFloorLocation);
++    Sample(1.f, TEXT("Tip"), FColor::Cyan, Data.bTipHasFloor, Data.TipFloorNormal, Data.TipFloorLocation);
++    Sample(-1.f, TEXT("Back"), FColor::Magenta, Data.bBackHasFloor, Data.BackFloorNormal, Data.BackFloorLocation);
++    Sample(0.f, TEXT("Center"), FColor::Yellow, Data.bCenterHasFloor, Data.CenterFloorNormal, Data.CenterFloorLocation);
+     Data.UpdateCombined();
+     return Data;
+ }
+@@ -310,6 +335,15 @@
+ void UProneCapsuleUtils::DrawDebug(const UCapsuleComponent* Capsule)
+ {
+ #if ENABLE_DRAW_DEBUG
++    if (Capsule && IsCapsuleHorizontal(Capsule) && CVarDrawProneFloorTraces.GetValueOnGameThread())
++    {
++        const UCharacterMoverComponent* Mover = FindCharacterMover(Capsule);
++        if (Mover && !Mover->IsOnGround())
++        {
++            DrawDebugString(Capsule->GetWorld(), Capsule->GetComponentLocation() + Mover->GetUpDirection() * 30.f,
++                TEXT("Prone floor probes: SKIPPED (Mover is not grounded)"), nullptr, FColor::Orange, 0.f, true);
++        }
++    }
+     if (Capsule && CVarDrawProneCapsule.GetValueOnGameThread())
+     {
+         DrawDebugCapsule(Capsule->GetWorld(), Capsule->GetComponentLocation(), GetCollisionHalfHeight(Capsule),
