@@ -301,7 +301,7 @@ crash handler — MCP will hang; relaunch); fresh and small → the editor is fi
 
 <!-- Prone collision gotcha: Global Mover rotates the live Chaos capsule geometry, not the upright root/wireframe; inspect ProneCapsuleUtils.get_physics_capsule_axis or mover.debug.DrawProneCapsule 1. Half length <= radius produces a sphere. -->
 
-<!-- Prone slope gotcha: Whole-capsule floor sweeps handle support/distance, but using their contact normal for prone tilt can create front/rear feedback. Latest source uses independent fixed tip/back probes for alignment and retains accepted tilt on missing grounded samples. -->
+<!-- Prone slope gotcha: Whole-capsule floor sweeps handle support/distance, but using their winning contact normal for prone tilt can create front/rear feedback. Latest source uses independent tip/back/center traces and retains accepted tilt on missing grounded samples; the 2026-10-15 physics-anchor revision moves probe starts with the live capsule pose and needs renewed seam verification. -->
 
 <!-- Prone normal transition gotcha: Keep the candidate in serialized stance state (80ms, 2-degree candidate band, 0.5-degree deadband), and never resample local floors in simulated-proxy modifier hooks. The stability version compiled successfully; debounce alone did not eliminate competing sweep contacts. -->
 
@@ -340,3 +340,18 @@ crash handler — MCP will hang; relaunch); fresh and small → the editor is fi
 <!-- Foot IK slope gotcha: CR_Crawl1 Foot IK Test evaluates each foot on the Back support plane and limits reach to the current animated hip-foot distance by sliding on that plane. Unreachable contacts may leave clearance to preserve knee bend; current Back DoesHit gates execution. 160 sampled crawl-pose native fixtures passed; live gameplay remains separate. -->
 
 <!-- RigVM collapse gotcha: UE 5.8 collapse_nodes can complete natively then raise ControlRigWorkflows callback errors and drop exterior vector/component links. Re-read pins and links, restore an explicit FVector input, and compare compiled outputs with pre-collapse fixtures before saving. -->
+
+<!-- Reface root-offset slope gotcha: CR_Crawl1 Translation Root removes current root horizontal offset from the base pelvis/Center-plane solve, then applies its full -dot(offset,N)/dot(world-up,N) height compensation. Keep the original 75%-blended +/-10cm base correction separate; otherwise the 125cm prone OffsetRoot radius overwhelms that cap and sinks the whole body on slopes. Current Center DoesHit gates translation. 640 native reface/offset fixtures passed; live gameplay remains separate. -->
+
+<!-- Prone capsule settings gotcha: ProneHalfHeight retains horizontal physics half length (displayed as Prone Physics Half Height); ProneCapsuleHalfHeight controls the upright component separately and clamps to radius. Use ProneCapsuleUtils collision dimension/shape helpers for queries, probes and debug drawing. Native build passed 2026-10-15; the user's character settings are component 36cm, physics 72cm, radius 36cm. Automated direct prone() entry stayed standing, so that scenario is not a runtime pass. -->
+
+<!-- Prone floor trace debug gotcha: mover.debug.DrawProneFloorTraces 1 draws actual local Tip/Back/Center queries (cyan/magenta/yellow), green walkable hits/normals, red misses and orange unwalkable hits; 0 disables. SKIPPED not grounded means no queries ran, not three misses. Source added 2026-10-15; external native rebuild required. -->
+
+<!-- Prone probe ceiling gotcha: Starting downward probes a physics half length above the pawn can hit low-ceiling tops. Start at anchor + Up * StanceSettings.ProneFloorProbeStartOffset (0cm default); keep horizontal physics offsets and downward endpoints. Raising the offset helps uphill reach but can reintroduce overhead hits. Start-height source added 2026-10-15; native rebuild required. -->
+
+<!-- Prone physics-anchor gotcha: Flat center-height probe starts can miss uphill ground. Read the live Chaos capsule center/axis/dimensions under its body lock; place Tip/Back slightly inside actual ends and Center at its center. Bound upward start offset inside an inscribed sphere to avoid overhead starts; trace along Mover down. End positions now follow tilt, so recheck seams. Source added 2026-10-15; external native rebuild required. -->
+
+<!-- Standard prone capsule gotcha (2026-10-15): Horizontal Chaos geometry and slope alignment were removed; use ProneCapsuleHalfHeight/ProneCapsuleRadius only. Fixed Tip/Back/Center offsets use projected character heading and Mover up, independent of capsule dimensions and mesh pose. Native build/current DLL and 84 probe-anchor cases passed; live slope gameplay remains untested. See Tools/StandardProneCapsule.md; older horizontal-capsule notes are historical. -->
+
+
+<!-- Prone wall-block gotcha: Pelvis-anchored 30cm-half-height movement traces overlap the floor while crawling and alternate floor/wall normals, restoring movement input. Block Movement if Hit now selects capsule-center + Input*86cm with 15cm radius/half-height when WantsToCrawl; original standing/crouch trace remains. Runtime prone wall/retreat/clear-path regression passed 2026-10-15. -->
