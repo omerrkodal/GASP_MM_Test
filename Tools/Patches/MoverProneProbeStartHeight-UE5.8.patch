@@ -1,0 +1,36 @@
+--- a/Source/Mover/Public/DefaultMovementSet/Settings/StanceSettings.h
++++ b/Source/Mover/Public/DefaultMovementSet/Settings/StanceSettings.h
+@@ -45,6 +45,11 @@
+ 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Prone", meta = (ClampMin = "1", UIMin = "1", ForceUnits = "cm"))
+ 	float ProneCapsuleRadius = 30;
+ 
++    // Upward offset in world centimeters for Tip/Back/Center floor trace starts relative to capsule center height.
++    // Zero avoids starting above low ceilings. Raise slightly only if uphill probes need extra reach above center.
++    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Prone", meta = (ClampMin = "0", UIMin = "0", ForceUnits = "cm"))
++    float ProneFloorProbeStartOffset = 0;
++
+ 	// New eye height while prone
+ 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Prone")
+ 	float ProneEyeHeight = 35;
+--- a/Source/Mover/Private/MoveLibrary/ProneCapsuleUtils.cpp
++++ b/Source/Mover/Private/MoveLibrary/ProneCapsuleUtils.cpp
+@@ -115,6 +115,8 @@
+     const UCommonLegacyMovementSettings* Settings = MoverComp->FindSharedSettings<UCommonLegacyMovementSettings>();
+     const float FloorReach = Settings ? FMath::Max(0.f, Settings->FloorSweepDistance) : 40.f;
+     const float MaxSlopeCosine = Settings ? Settings->MaxWalkSlopeCosine : 0.71f;
++    const UStanceSettings* StanceSettings = MoverComp->FindSharedSettings<UStanceSettings>();
++    const float StartOffset = StanceSettings ? FMath::Max(0.f, StanceSettings->ProneFloorProbeStartOffset) : 0.f;
+     const float HalfLength = GetCollisionHalfHeight(Capsule);
+     const FVector Center = Capsule->GetComponentLocation();
+     FCollisionQueryParams Params(SCENE_QUERY_STAT(ProneFloorProbes), false, Capsule->GetOwner());
+@@ -130,7 +132,9 @@
+         // Both horizontal offsets and the vertical search bounds are independent
+         // of accepted collision tilt. Changing tilt cannot move these samples along the ground.
+         const FVector Anchor = Center + Facing * (Direction * HalfLength);
+-        const FVector Start = Anchor + Up * HalfLength;
++        // Start at body-center height by default; forward half length is not vertical clearance.
++        // This prevents downward probes from starting above and hitting overhead obstacle tops.
++        const FVector Start = Anchor + Up * StartOffset;
+         const FVector End = Anchor - Up * (HalfLength + FloorReach);
+         FHitResult Hit;
+         const bool bTraceHit = Capsule->GetWorld()->LineTraceSingleByChannel(Hit, Start, End,

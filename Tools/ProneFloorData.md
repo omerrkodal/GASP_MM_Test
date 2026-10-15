@@ -27,8 +27,9 @@ Before the user narrowed the task to C++, six variables were added and saved in 
 ## Sampling and capsule alignment
 
 - Local grounded prone simulation runs three downward line traces after movement, once per simulation substep: tip, back, and center. All use the same vertical bounds and collision settings.
-- Probe anchors are the capsule centre plus/minus its scaled half length along the pawn's forward direction projected onto the plane perpendicular to Mover's up direction. Capsule collision tilt does not determine the anchors.
-- Each trace starts one half length above its anchor and ends one half length plus `CommonLegacyMovementSettings.FloorSweepDistance` below it. Collision responses and the walkable slope threshold come from the existing Mover settings. The owning actor is ignored.
+- Probe anchors are the capsule centre plus/minus its scaled **physics** half length along the pawn's forward direction projected onto the plane perpendicular to Mover's up direction. The center anchor is the capsule center. Capsule collision tilt does not determine the anchors.
+- Each trace starts at its anchor plus Mover's up direction times `StanceSettings.ProneFloorProbeStartOffset` (**default 0 cm**, capsule-center height). It ends one physics half length plus `CommonLegacyMovementSettings.FloorSweepDistance` below its anchor. The former start height of one physics half length above the anchor could begin above a low ceiling and select its top as floor.
+- **Prone Floor Probe Start Offset** is editable under Mover's Stance Settings / Prone and clamped nonnegative. Keep 0 for narrow passages. A small positive value may help uphill contacts above the start height but can reintroduce overhead hits if raised too far. Samples above the start height cannot be detected by that downward trace. Collision responses and the walkable slope threshold come from the existing Mover settings. The owning actor is ignored.
 - All three samples are copied/serialized with `FStanceModifier`, and finalized samples are published on `CharacterMoverComponent`. Simulated proxies use received samples without running local probes.
 - Capsule alignment still selects tip only, both normalized together, back only, then center if both ends miss. The selected result is used on the next simulation substep. Center does not influence alignment while either end is valid. The existing 80 ms stability window, angular deadband, and sampled clearance checks remain in effect.
 - If all probes miss while grounded, the capsule retains its accepted tilt. Airborne alignment targets Mover's up direction.
@@ -58,7 +59,13 @@ Each trace has a Tip/Back/Center label and result. Drawings last one frame and u
 
 The independent capsule visualization remains `mover.debug.DrawProneCapsule 1`.
 
-The incremental source patch is `Tools/Patches/MoverProneFloorTraceDebug-UE5.8.patch`, applied after the 2026-10-15 prone component/physics dimension settings change. Backups, staged source, installed-file hashes, and prior successful build evidence are in `Saved/VibeUE/ProneFloorTraceDebug-20261015`. This debug revision requires an external native rebuild; the earlier successful build does not include the command. No gameplay screenshot or native build of this revision has been recorded yet.
+The incremental source patch is `Tools/Patches/MoverProneFloorTraceDebug-UE5.8.patch`, applied after the 2026-10-15 prone component/physics dimension settings change. Backups, staged source, installed-file hashes, and prior successful build evidence are in `Saved/VibeUE/ProneFloorTraceDebug-20261015`. The debug revision built successfully at 13:07:43 UTC on 2026-10-15 (`EditorBuild-20261015-155643.log`), confirmed by WorkflowService as succeeded and not stale before the start-height change. Gameplay visual confirmation remains separate.
+
+### Center-height trace starts (2026-10-15)
+
+The newest source starts all three probes at capsule-center height plus the configurable upward offset described above. The debug command draws those exact query endpoints. Horizontal offsets, downward endpoints, hit selection, getter outputs, and serialization are unchanged. This revision requires an **external native rebuild**; the previous debug DLL does not contain the new setting or start height. It has not been compiled or gameplay verified yet.
+
+The incremental patch is `Tools/Patches/MoverProneProbeStartHeight-UE5.8.patch`, applied after the debug patch. Backups of `StanceSettings.h` and `ProneCapsuleUtils.cpp`, staged source, installed hashes, and previous successful build evidence are in `Saved/VibeUE/ProneProbeStartHeight-20261015`. No Blueprint settings or graphs were edited.
 
 ## Native files and rollback artifacts
 
