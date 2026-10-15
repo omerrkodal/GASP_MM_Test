@@ -12,8 +12,8 @@ The node exposes **Tip**, **Back**, and **Center** as separate native floor stru
 
 | Output | Meaning |
 |---|---|
-| Tip | Walkable floor beneath the fixed front probe. |
-| Back | Walkable floor beneath the fixed rear probe. |
+| Tip | Walkable floor beneath the probe just inside the physical capsule's front end. |
+| Back | Walkable floor beneath the probe just inside the physical capsule's rear end. |
 | Center | Walkable floor beneath the capsule center; sampled even when either end hits. |
 
 Each output uses native `FMoverFloorData` (Blueprint display name **Mover Floor Data**). This matches the fields of the project's `/Game/Blueprints/Data/S_FloorData`, but Unreal treats native and Blueprint-defined structs as different types. Split each native pin to get Normal/Location/Does Hit?, or use **Break Mover Floor Data**. If retaining `S_FloorData` variables, connect those fields to **Make S_FloorData**. The global plugin does not load or depend on the project struct asset.
@@ -26,14 +26,15 @@ Before the user narrowed the task to C++, six variables were added and saved in 
 
 ## Sampling and capsule alignment
 
-- Local grounded prone simulation runs three downward line traces after movement, once per simulation substep: tip, back, and center. All use the same vertical bounds and collision settings.
-- Probe anchors are the capsule centre plus/minus its scaled **physics** half length along the pawn's forward direction projected onto the plane perpendicular to Mover's up direction. The center anchor is the capsule center. Capsule collision tilt does not determine the anchors.
-- Each trace starts at its anchor plus Mover's up direction times `StanceSettings.ProneFloorProbeStartOffset` (**default 0 cm**, capsule-center height). It ends one physics half length plus `CommonLegacyMovementSettings.FloorSweepDistance` below its anchor. The former start height of one physics half length above the anchor could begin above a low ceiling and select its top as floor.
-- **Prone Floor Probe Start Offset** is editable under Mover's Stance Settings / Prone and clamped nonnegative. Keep 0 for narrow passages. A small positive value may help uphill contacts above the start height but can reintroduce overhead hits if raised too far. Samples above the start height cannot be detected by that downward trace. Collision responses and the walkable slope threshold come from the existing Mover settings. The owning actor is ignored.
+- Local grounded prone simulation runs three downward line traces after movement, once per simulation substep: tip, back, and center. All use the same downward reach and collision settings.
+- Probe anchors now follow the **live Chaos capsule geometry and body pose**, read under a physics read lock. Tip/Back are placed along its actual tilted axis, inset 2 cm from the outer ends (or half the radius for very small capsules). Center is the geometry's actual world center. Capsule scale is already included in the geometry and is not applied twice. Nonstandard welded/compound bodies and unavailable physics return empty samples.
+- Each trace starts at its physical anchor plus Mover's up direction times `StanceSettings.ProneFloorProbeStartOffset` (**default 0 cm**). Unlike the prior flat-plane version, the end anchors rise/fall with the physics capsule's slope. Traces remain vertical relative to Mover's up direction, rather than following the capsule's normal. Each ends one physics half length plus `CommonLegacyMovementSettings.FloorSweepDistance` below its anchor.
+- **Prone Floor Probe Start Offset** is editable under Mover's Stance Settings / Prone and clamped nonnegative. The effective offset is additionally bounded to a sphere inside the capsule at each anchor, leaving up to 1 cm of interior clearance. This keeps starts inside the body rather than above a low ceiling when the capsule itself has clearance. Samples above a trace's start height cannot be detected by that downward trace. Collision responses and the walkable slope threshold come from existing Mover settings. The owning actor is ignored.
 - All three samples are copied/serialized with `FStanceModifier`, and finalized samples are published on `CharacterMoverComponent`. Simulated proxies use received samples without running local probes.
 - Capsule alignment still selects tip only, both normalized together, back only, then center if both ends miss. The selected result is used on the next simulation substep. Center does not influence alignment while either end is valid. The existing 80 ms stability window, angular deadband, and sampled clearance checks remain in effect.
 - If all probes miss while grounded, the capsule retains its accepted tilt. Airborne alignment targets Mover's up direction.
 - The full capsule floor sweep still handles physical ground support and floor distance. Its winning contact does not choose prone alignment after probe data is available.
+- This revision intentionally replaces the former fixed horizontal probe anchors. End probe positions now move with accepted capsule tilt; the existing stability window remains, but slope seam oscillation must be checked in gameplay after rebuilding. No runtime evidence of this revision is recorded yet.
 - Standing and crouching keep the existing floor-query path.
 
 All multiplayer peers need the same plugin revision because the stance serialization now includes the probe results. Async/ChaosMover and multiplayer behavior remain unverified.
@@ -63,9 +64,15 @@ The incremental source patch is `Tools/Patches/MoverProneFloorTraceDebug-UE5.8.p
 
 ### Center-height trace starts (2026-10-15)
 
-The newest source starts all three probes at capsule-center height plus the configurable upward offset described above. The debug command draws those exact query endpoints. Horizontal offsets, downward endpoints, hit selection, getter outputs, and serialization are unchanged. This revision requires an **external native rebuild**; the previous debug DLL does not contain the new setting or start height. It has not been compiled or gameplay verified yet.
+The center-height version started all three probes on a flat capsule-center plane plus the configurable upward offset. It built successfully at 13:19:53 UTC on 2026-10-15, confirmed by WorkflowService as succeeded and not stale before the physics-anchor revision. The user then reported problems on angled surfaces. That flat-plane version is superseded below.
 
 The incremental patch is `Tools/Patches/MoverProneProbeStartHeight-UE5.8.patch`, applied after the debug patch. Backups of `StanceSettings.h` and `ProneCapsuleUtils.cpp`, staged source, installed hashes, and previous successful build evidence are in `Saved/VibeUE/ProneProbeStartHeight-20261015`. No Blueprint settings or graphs were edited.
+
+### Live physics capsule probe anchors (2026-10-15)
+
+The newest source uses the actual physics capsule center, axis, end-cap positions, and radius as described in Sampling above. It retains independent Tip/Back/Center outputs, downward queries, existing alignment selection, and serialized fields. The debug command draws the exact new query endpoints. This revision requires an **external native rebuild** and has not been compiled or gameplay verified yet.
+
+The incremental patch is `Tools/Patches/MoverPronePhysicsProbeAnchors-UE5.8.patch`, applied after the center-height patch. Backups of `ProneCapsuleUtils.cpp`, its header, and `StanceSettings.h`, staged source, installed hashes, and previous successful build evidence are in `Saved/VibeUE/PronePhysicsProbeAnchors-20261015`. No Blueprint settings or graphs were edited.
 
 ## Native files and rollback artifacts
 

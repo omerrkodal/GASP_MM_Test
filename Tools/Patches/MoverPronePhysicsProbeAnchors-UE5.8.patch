@@ -1,0 +1,99 @@
+--- a/Source/Mover/Private/MoveLibrary/ProneCapsuleUtils.cpp
++++ b/Source/Mover/Private/MoveLibrary/ProneCapsuleUtils.cpp
+@@ -110,15 +110,42 @@
+     if (CharacterMover && !CharacterMover->IsOnGround()) { return Data; }
+ 
+     const FVector Up = MoverComp->GetUpDirection().GetSafeNormal();
+-    const FVector Facing = FVector::VectorPlaneProject(Capsule->GetComponentQuat().GetAxisX(), Up).GetSafeNormal();
+-    if (Up.IsNearlyZero() || Facing.IsNearlyZero()) { return Data; }
++    if (Up.IsNearlyZero()) { return Data; }
++    // Use this body's live Chaos geometry and pose. The upright component's
++    // center-height plane does not follow the actual capsule ends on a slope.
++    const FBodyInstance* Body = Capsule->GetBodyInstance();
++    if (!Body || !Body->IsValidBodyInstance() || Body->WeldParent) { return Data; }
++    FVector Center = FVector::ZeroVector;
++    FVector Axis = FVector::ZeroVector;
++    float SegmentHalfLength = 0.f;
++    float Radius = 0.f;
++    bool bReadCapsule = false;
++    FPhysicsCommand::ExecuteRead(Body->GetPhysicsActorHandle(), [&](const FPhysicsActorHandle& Actor)
++    {
++        TArray<FPhysicsShapeHandle> Shapes;
++        Body->GetAllShapes_AssumesLocked(Shapes);
++        if (Shapes.Num() != 1 || Shapes[0].GetGeometry().GetType() != Chaos::ImplicitObjectType::Capsule) { return; }
++        const Chaos::FCapsule* Geometry = Shapes[0].GetGeometry().GetObject<Chaos::FCapsule>();
++        const FVector LocalStart(Geometry->GetX1f());
++        const FVector LocalEnd(Geometry->GetX2f());
++        const FTransform BodyPose = Body->GetUnrealWorldTransform_AssumesLocked();
++        // Chaos capsule dimensions already include component scale.
++        Center = BodyPose.TransformPositionNoScale((LocalStart + LocalEnd) * 0.5);
++        Axis = BodyPose.GetRotation().RotateVector((LocalEnd - LocalStart).GetSafeNormal());
++        SegmentHalfLength = (LocalEnd - LocalStart).Size() * 0.5;
++        Radius = Geometry->GetRadiusf();
++        bReadCapsule = !Axis.IsNearlyZero() && Radius > UE_KINDA_SMALL_NUMBER;
++    });
++    if (!bReadCapsule) { return Data; }
++    if (Axis.Dot(Capsule->GetComponentQuat().GetAxisX()) < 0.f) { Axis = -Axis; }
++    const float HalfLength = SegmentHalfLength + Radius;
++    // Stay slightly inside the physical end caps rather than on their outer surface.
++    const float ProbeDistance = FMath::Max(0.f, HalfLength - FMath::Min(2.f, Radius * 0.5f));
+     const UCommonLegacyMovementSettings* Settings = MoverComp->FindSharedSettings<UCommonLegacyMovementSettings>();
+     const float FloorReach = Settings ? FMath::Max(0.f, Settings->FloorSweepDistance) : 40.f;
+     const float MaxSlopeCosine = Settings ? Settings->MaxWalkSlopeCosine : 0.71f;
+     const UStanceSettings* StanceSettings = MoverComp->FindSharedSettings<UStanceSettings>();
+     const float StartOffset = StanceSettings ? FMath::Max(0.f, StanceSettings->ProneFloorProbeStartOffset) : 0.f;
+-    const float HalfLength = GetCollisionHalfHeight(Capsule);
+-    const FVector Center = Capsule->GetComponentLocation();
+     FCollisionQueryParams Params(SCENE_QUERY_STAT(ProneFloorProbes), false, Capsule->GetOwner());
+     FCollisionResponseParams Response;
+     UMovementUtils::InitCollisionParams(Capsule, Params, Response);
+@@ -129,12 +156,19 @@
+     auto Sample = [&](float Direction, const TCHAR* ProbeName, const FColor& ProbeColor,
+         bool& HasFloor, FVector& Normal, FVector& ImpactPoint)
+     {
+-        // Both horizontal offsets and the vertical search bounds are independent
+-        // of accepted collision tilt. Changing tilt cannot move these samples along the ground.
+-        const FVector Anchor = Center + Facing * (Direction * HalfLength);
+-        // Start at body-center height by default; forward half length is not vertical clearance.
+-        // This prevents downward probes from starting above and hitting overhead obstacle tops.
+-        const FVector Start = Anchor + Up * StartOffset;
++        const float AlongAxis = Direction * ProbeDistance;
++        const FVector Anchor = Center + Axis * AlongAxis;
++        // The sphere centered at the nearest segment point lies inside the capsule.
++        // Bound the optional upward offset to that sphere so the trace starts
++        // inside the live shape, including at tilted, rounded end caps.
++        const float SphereAxis = FMath::Clamp(AlongAxis, -SegmentHalfLength, SegmentHalfLength);
++        const FVector FromSphereCenter = Axis * (AlongAxis - SphereAxis);
++        const float UpProjection = FromSphereCenter.Dot(Up);
++        const float UpClearance = FMath::Sqrt(FMath::Max(0.f,
++            UpProjection * UpProjection + Radius * Radius - FromSphereCenter.SizeSquared())) - UpProjection;
++        const float SafeStartOffset = FMath::Min(StartOffset,
++            FMath::Max(0.f, UpClearance - FMath::Min(1.f, Radius * 0.1f)));
++        const FVector Start = Anchor + Up * SafeStartOffset;
+         const FVector End = Anchor - Up * (HalfLength + FloorReach);
+         FHitResult Hit;
+         const bool bTraceHit = Capsule->GetWorld()->LineTraceSingleByChannel(Hit, Start, End,
+--- a/Source/Mover/Public/MoveLibrary/ProneCapsuleUtils.h
++++ b/Source/Mover/Public/MoveLibrary/ProneCapsuleUtils.h
+@@ -39,7 +39,7 @@
+     static bool IsWithinFootprint(const UCapsuleComponent* Capsule, const FVector& Location, const FVector& ImpactPoint, float Radius, const FVector& UpDirection);
+     // Rotation for a prone capsule whose long axis is tangent to SurfaceNormal.
+     static FQuat GetProneRotation(const FQuat& RootRotation, const FVector& SurfaceNormal);
+-    // Three fixed tip/back/center probes each grounded prone substep; independent of collision tilt.
++    // Three downward probes from inside the live physics capsule tip/back/center each grounded prone substep.
+     static FProneFloorData SampleProneFloorData(const UMoverComponent* MoverComp, const UCapsuleComponent* Capsule);
+     static FVector GetDesiredSurfaceNormal(const UMoverComponent* MoverComp);
+     static bool TryAlignToSurface(UCapsuleComponent* Capsule, const FVector& SurfaceNormal);
+--- a/Source/Mover/Public/DefaultMovementSet/Settings/StanceSettings.h
++++ b/Source/Mover/Public/DefaultMovementSet/Settings/StanceSettings.h
+@@ -45,8 +45,8 @@
+ 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Prone", meta = (ClampMin = "1", UIMin = "1", ForceUnits = "cm"))
+ 	float ProneCapsuleRadius = 30;
+ 
+-    // Upward offset in world centimeters for Tip/Back/Center floor trace starts relative to capsule center height.
+-    // Zero avoids starting above low ceilings. Raise slightly only if uphill probes need extra reach above center.
++    // Requested upward offset in world centimeters from each live physics capsule Tip/Back/Center probe anchor.
++    // Zero starts on the capsule axis; upward offsets are limited to stay inside the capsule with a small margin.
+     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Prone", meta = (ClampMin = "0", UIMin = "0", ForceUnits = "cm"))
+     float ProneFloorProbeStartOffset = 0;
+ 
