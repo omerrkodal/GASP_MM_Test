@@ -115,7 +115,7 @@ def rebuild(args: argparse.Namespace) -> int:
     plugin = engine / "Plugins" / "Experimental" / "Mover"
     rules = plugin / "Source" / "Mover" / "Mover.Build.cs"
     required = [build_bat, engine / "Source" / "UnrealEditor.Target.cs", rules,
-                plugin / "Source" / "Mover" / "Private" / "MoveLibrary" / "ProneCapsuleUtils.cpp"]
+                plugin / "Source" / "Mover" / "Private" / "MoveLibrary" / "ProneFloorTraceUtils.cpp"]
     for path in required:
         if not path.is_file():
             raise RuntimeError(f"Required build input is missing: {path}")
