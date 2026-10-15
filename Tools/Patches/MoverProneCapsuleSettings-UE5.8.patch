@@ -1,0 +1,299 @@
+--- a/Source/Mover/Public/DefaultMovementSet/Settings/StanceSettings.h
++++ b/Source/Mover/Public/DefaultMovementSet/Settings/StanceSettings.h
+@@ -33,8 +33,13 @@
+ 	float CrouchedEyeHeight = 50;
+ 
+ 	// Half length along the forward axis while prone (including end caps). Must be at least ProneCapsuleRadius.
++	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Prone", meta = (DisplayName = "Prone Physics Half Height", ClampMin = "1", UIMin = "1", ForceUnits = "cm"))
++	float ProneHalfHeight = 42;
++
++	// Upright capsule component half height while prone. Does not change the horizontal physics length.
++	// UCapsuleComponent clamps this to at least ProneCapsuleRadius.
+ 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Prone", meta = (ClampMin = "1", UIMin = "1", ForceUnits = "cm"))
+-	float ProneHalfHeight = 42;
++	float ProneCapsuleHalfHeight = 42;
+ 
+ 	// Radius / vertical half thickness of the horizontal prone capsule.
+ 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Prone", meta = (ClampMin = "1", UIMin = "1", ForceUnits = "cm"))
+--- a/Source/Mover/Public/MoveLibrary/ProneCapsuleUtils.h
++++ b/Source/Mover/Public/MoveLibrary/ProneCapsuleUtils.h
+@@ -4,6 +4,7 @@
+ #include "DefaultMovementSet/ProneFloorData.h"
+ #include "ProneCapsuleUtils.generated.h"
+ 
++struct FCollisionShape;
+ class UCapsuleComponent;
+ class UPrimitiveComponent;
+ class UMoverComponent;
+@@ -24,6 +25,15 @@
+     UFUNCTION(BlueprintPure, Category="Mover|Collision")
+     static FVector GetPhysicsCapsuleAxis(const UCapsuleComponent* Capsule);
+ 
++    /** Scaled collision half length, independent of the upright component half height while prone. */
++    UFUNCTION(BlueprintPure, Category="Mover|Collision")
++    static float GetCollisionHalfHeight(const UCapsuleComponent* Capsule);
++
++    /** Read the actual live Chaos capsule half length including its end caps. Zero if unavailable. */
++    UFUNCTION(BlueprintPure, Category="Mover|Collision")
++    static float GetPhysicsCapsuleHalfHeight(const UCapsuleComponent* Capsule);
++
++    static FCollisionShape GetCollisionShape(const UPrimitiveComponent* Primitive, float Inflation = 0.f);
+     static FQuat GetQueryRotation(const UPrimitiveComponent* Primitive, const FQuat& RootRotation);
+     static float GetVerticalExtent(const UCapsuleComponent* Capsule, const FVector& UpDirection);
+     static bool IsWithinFootprint(const UCapsuleComponent* Capsule, const FVector& Location, const FVector& ImpactPoint, float Radius, const FVector& UpDirection);
+--- a/Source/Mover/Private/MoveLibrary/ProneCapsuleUtils.cpp
++++ b/Source/Mover/Private/MoveLibrary/ProneCapsuleUtils.cpp
+@@ -2,6 +2,7 @@
+ #include "MoveLibrary/ProneCapsuleUtils.h"
+ #include "Components/CapsuleComponent.h"
+ #include "DefaultMovementSet/CharacterMoverComponent.h"
++#include "DefaultMovementSet/Settings/StanceSettings.h"
+ #include "DefaultMovementSet/Settings/CommonLegacyMovementSettings.h"
+ #include "MoveLibrary/MoverBlackboard.h"
+ #include "MoverSimulationTypes.h"
+@@ -32,6 +33,50 @@
+     return Capsule && Capsule->ComponentHasTag(HorizontalCapsuleTag);
+ }
+ 
++float UProneCapsuleUtils::GetCollisionHalfHeight(const UCapsuleComponent* Capsule)
++{
++    if (!Capsule) { return 0.f; }
++    if (IsCapsuleHorizontal(Capsule))
++    {
++        if (const UCharacterMoverComponent* Mover = FindCharacterMover(Capsule))
++        {
++            if (const UStanceSettings* Settings = Mover->FindSharedSettings<UStanceSettings>())
++            {
++                return FMath::Max(Capsule->GetUnscaledCapsuleRadius(), Settings->ProneHalfHeight) * Capsule->GetShapeScale();
++            }
++        }
++    }
++    return Capsule->GetScaledCapsuleHalfHeight();
++}
++
++FCollisionShape UProneCapsuleUtils::GetCollisionShape(const UPrimitiveComponent* Primitive, float Inflation)
++{
++    const UCapsuleComponent* Capsule = Cast<UCapsuleComponent>(Primitive);
++    if (!IsCapsuleHorizontal(Capsule)) { return Primitive->GetCollisionShape(Inflation); }
++    const float Radius = FMath::Max(0.f, Capsule->GetScaledCapsuleRadius() + Inflation);
++    return FCollisionShape::MakeCapsule(Radius, FMath::Max(Radius, GetCollisionHalfHeight(Capsule) + Inflation));
++}
++
++float UProneCapsuleUtils::GetPhysicsCapsuleHalfHeight(const UCapsuleComponent* Capsule)
++{
++    float HalfHeight = 0.f;
++    const FBodyInstance* Body = Capsule ? Capsule->GetBodyInstance() : nullptr;
++    if (Body && Body->IsValidBodyInstance())
++    {
++        FPhysicsCommand::ExecuteRead(Body->GetPhysicsActorHandle(), [&](const FPhysicsActorHandle& Actor)
++        {
++            TArray<FPhysicsShapeHandle> Shapes;
++            Body->GetAllShapes_AssumesLocked(Shapes);
++            if (Shapes.Num() == 1 && Shapes[0].GetGeometry().GetType() == Chaos::ImplicitObjectType::Capsule)
++            {
++                const Chaos::FCapsule* Geometry = Shapes[0].GetGeometry().GetObject<Chaos::FCapsule>();
++                HalfHeight = Geometry->GetRadiusf() + 0.5f * FVector(Geometry->GetX2f() - Geometry->GetX1f()).Size();
++            }
++        });
++    }
++    return HalfHeight;
++}
++
+ FQuat UProneCapsuleUtils::GetQueryRotation(const UPrimitiveComponent* Primitive, const FQuat& RootRotation)
+ {
+     const UCapsuleComponent* Capsule = Cast<UCapsuleComponent>(Primitive);
+@@ -67,7 +112,7 @@
+     const UCommonLegacyMovementSettings* Settings = MoverComp->FindSharedSettings<UCommonLegacyMovementSettings>();
+     const float FloorReach = Settings ? FMath::Max(0.f, Settings->FloorSweepDistance) : 40.f;
+     const float MaxSlopeCosine = Settings ? Settings->MaxWalkSlopeCosine : 0.71f;
+-    const float HalfLength = Capsule->GetScaledCapsuleHalfHeight();
++    const float HalfLength = GetCollisionHalfHeight(Capsule);
+     const FVector Center = Capsule->GetComponentLocation();
+     FCollisionQueryParams Params(SCENE_QUERY_STAT(ProneFloorProbes), false, Capsule->GetOwner());
+     FCollisionResponseParams Response;
+@@ -153,7 +198,7 @@
+     {
+         const FQuat TestRotation = FQuat::Slerp(CurrentRotation, TargetRotation, float(Step) / Steps);
+         if (Capsule->GetWorld()->OverlapBlockingTestByChannel(Capsule->GetComponentLocation(), TestRotation,
+-            Capsule->GetCollisionObjectType(), Capsule->GetCollisionShape(-0.1f), Params, Response)) { return false; }
++            Capsule->GetCollisionObjectType(), GetCollisionShape(Capsule, -0.1f), Params, Response)) { return false; }
+     }
+     CharacterMover->ProneCollisionSurfaceNormal = Normal;
+     EnsurePhysicsGeometry(Capsule);
+@@ -177,7 +222,7 @@
+ {
+     if (!Capsule) { return 0.f; }
+     const float Radius = Capsule->GetScaledCapsuleRadius();
+-    const float HalfLength = FMath::Max(0.f, Capsule->GetScaledCapsuleHalfHeight() - Radius);
++    const float HalfLength = FMath::Max(0.f, GetCollisionHalfHeight(Capsule) - Radius);
+     return Radius + HalfLength * FMath::Abs(GetCapsuleCollisionRotation(Capsule).GetAxisZ().Dot(UpDirection));
+ }
+ 
+@@ -188,7 +233,7 @@
+     if (IsCapsuleHorizontal(Capsule))
+     {
+         const FVector Axis = GetCapsuleCollisionRotation(Capsule).GetAxisZ();
+-        const float HalfLength = FMath::Max(0.f, Capsule->GetScaledCapsuleHalfHeight() - Capsule->GetScaledCapsuleRadius());
++        const float HalfLength = FMath::Max(0.f, GetCollisionHalfHeight(Capsule) - Capsule->GetScaledCapsuleRadius());
+         const FVector Segment = FVector::VectorPlaneProject(Axis * HalfLength, UpDirection);
+         if (!Segment.IsNearlyZero())
+         {
+@@ -220,7 +265,7 @@
+     FBodyInstance* Body = Capsule->GetBodyInstance();
+     if (!Body || !Body->IsValidBodyInstance() || Body->WeldParent) { return; }
+     const float Radius = Capsule->GetScaledCapsuleRadius();
+-    const float HalfLength = FMath::Max((float)FCollisionShape::MinCapsuleAxisHalfHeight(), Capsule->GetScaledCapsuleHalfHeight() - Radius);
++    const float HalfLength = FMath::Max((float)FCollisionShape::MinCapsuleAxisHalfHeight(), GetCollisionHalfHeight(Capsule) - Radius);
+     const FVector Axis = IsCapsuleHorizontal(Capsule) ?
+         Capsule->GetComponentQuat().UnrotateVector(GetCapsuleCollisionRotation(Capsule).GetAxisZ()).GetSafeNormal() : FVector::UpVector;
+     const Chaos::FVec3 End = Axis * HalfLength;
+@@ -267,7 +312,7 @@
+ #if ENABLE_DRAW_DEBUG
+     if (Capsule && CVarDrawProneCapsule.GetValueOnGameThread())
+     {
+-        DrawDebugCapsule(Capsule->GetWorld(), Capsule->GetComponentLocation(), Capsule->GetScaledCapsuleHalfHeight(),
++        DrawDebugCapsule(Capsule->GetWorld(), Capsule->GetComponentLocation(), GetCollisionHalfHeight(Capsule),
+             Capsule->GetScaledCapsuleRadius(), GetCapsuleCollisionRotation(Capsule), FColor::Cyan, false, 0.f, 0, 1.f);
+     }
+ #endif
+--- a/Source/Mover/Private/DefaultMovementSet/MovementModifiers/StanceModifier.cpp
++++ b/Source/Mover/Private/DefaultMovementSet/MovementModifiers/StanceModifier.cpp
+@@ -308,7 +308,7 @@
+     const bool bCurrentHorizontal = UProneCapsuleUtils::IsCapsuleHorizontal(CapsuleComponent);
+     const FVector TargetNormal = UProneCapsuleUtils::GetDesiredSurfaceNormal(MoverComp);
+     const bool bSameSurface = !bTargetHorizontal || MoverComp->ProneCollisionSurfaceNormal.Equals(TargetNormal, UE_KINDA_SMALL_NUMBER);
+-    if (bTargetHorizontal == bCurrentHorizontal && bSameSurface && TargetHalfHeightScaled <= CapsuleComponent->GetScaledCapsuleHalfHeight() && TargetRadiusScaled <= CurrentRadius)
++    if (bTargetHorizontal == bCurrentHorizontal && bSameSurface && TargetHalfHeightScaled <= UProneCapsuleUtils::GetCollisionHalfHeight(CapsuleComponent) && TargetRadiusScaled <= CurrentRadius)
+     {
+         return true;
+     }
+@@ -346,7 +346,15 @@
+     if (!Capsule) { return; }
+     const FVector Up = MoverComp->GetUpDirection();
+     const float OldExtent = UProneCapsuleUtils::GetVerticalExtent(Capsule, Up);
+-    Capsule->SetCapsuleSize(NewRadius, FMath::Max(NewHalfHeight, NewRadius), false);
++    float ComponentHalfHeight = NewHalfHeight;
++    if (bHorizontal)
++    {
++        if (const UStanceSettings* Settings = MoverComp->FindSharedSettings<UStanceSettings>())
++        {
++            ComponentHalfHeight = Settings->ProneCapsuleHalfHeight;
++        }
++    }
++    Capsule->SetCapsuleSize(NewRadius, FMath::Max(ComponentHalfHeight, NewRadius), false);
+     UProneCapsuleUtils::SetHorizontal(Capsule, bHorizontal);
+     if (UMoverBlackboard* Blackboard = MoverComp->GetSimBlackboard_Mutable())
+     {
+@@ -354,7 +362,7 @@
+     }
+     // UCapsuleComponent bounds are upright. Use conservative bounds for horizontal collision.
+     Capsule->SetBoundsScale(bHorizontal ? FMath::Max(OriginalCapsuleBoundsScale,
+-        Capsule->GetScaledCapsuleHalfHeight() / FMath::Max(Capsule->GetScaledCapsuleRadius(), 1.f)) : OriginalCapsuleBoundsScale);
++        UProneCapsuleUtils::GetCollisionHalfHeight(Capsule) / FMath::Max(Capsule->GetScaledCapsuleRadius(), 1.f)) : OriginalCapsuleBoundsScale);
+     if (APawn* Pawn = Cast<APawn>(MoverComp->GetOwner())) { Pawn->BaseEyeHeight = NewEyeHeight; }
+     const float HeightDifference = UProneCapsuleUtils::GetVerticalExtent(Capsule, Up) - OldExtent;
+     if (!FMath::IsNearlyZero(HeightDifference))
+--- a/Source/Mover/Private/MoveLibrary/FloorQueryUtils.cpp
++++ b/Source/Mover/Private/MoveLibrary/FloorQueryUtils.cpp
+@@ -128,6 +128,7 @@
+     const UCapsuleComponent* ProneCapsule = Cast<UCapsuleComponent>(MovingComps.UpdatedComponent.Get());
+     if (UProneCapsuleUtils::IsCapsuleHorizontal(ProneCapsule))
+     {
++        PawnHalfHeight = UProneCapsuleUtils::GetCollisionHalfHeight(ProneCapsule);
+         // A horizontal capsule has a stadium footprint; upright shrink/perch formulas do not apply.
+         const float Shrink = FMath::Min(0.1f, PawnRadius * 0.1f);
+         const FCollisionShape Shape = FCollisionShape::MakeCapsule(PawnRadius - Shrink, PawnHalfHeight - Shrink);
+--- a/Source/Mover/Private/MoveLibrary/MovementUtils.cpp
++++ b/Source/Mover/Private/MoveLibrary/MovementUtils.cpp
+@@ -472,7 +472,7 @@
+ 		// We really want to make sure that precision differences or differences between the overlap test and sweep tests don't put us into another overlap,
+ 		// so make the overlap test a bit more restrictive.
+ 		const float OverlapInflation = 0.1f; //BaseMovementCVars::PenetrationOverlapCheckInflation;
+-		bool bEncroached = OverlapTest(UpdatedComponent, UpdatedPrimitive, Hit.TraceStart + Adjustment, NewRotationQuat, UpdatedPrimitive->GetCollisionObjectType(), UpdatedPrimitive->GetCollisionShape(OverlapInflation), ActorOwner);
++		bool bEncroached = OverlapTest(UpdatedComponent, UpdatedPrimitive, Hit.TraceStart + Adjustment, NewRotationQuat, UpdatedPrimitive->GetCollisionObjectType(), UProneCapsuleUtils::GetCollisionShape(UpdatedPrimitive, OverlapInflation), ActorOwner);
+ 		if (!bEncroached)
+ 		{
+ 			// Move without sweeping.
+@@ -881,7 +881,7 @@
+                 const FQuat TestRotation = FQuat::Slerp(OldRotation, NewRotation, float(Step) / Steps);
+                 if (Capsule->GetWorld()->OverlapBlockingTestByChannel(Capsule->GetComponentLocation(),
+                     UProneCapsuleUtils::GetQueryRotation(Capsule, TestRotation), Capsule->GetCollisionObjectType(),
+-                    Capsule->GetCollisionShape(-0.1f), Params, Response))
++                    UProneCapsuleUtils::GetCollisionShape(Capsule, -0.1f), Params, Response))
+                 {
+                     SafeRotation = OldRotation;
+                     break;
+@@ -915,7 +915,7 @@
+ 		bool bFoundBlockingHit = false;
+ 
+ 		ECollisionChannel const BlockingChannel = PrimComp->GetCollisionObjectType();
+-		FCollisionShape const CollisionShape = PrimComp->GetCollisionShape(-Epsilon);
++		FCollisionShape const CollisionShape = UProneCapsuleUtils::GetCollisionShape(PrimComp, -Epsilon);
+ 
+ 		if (CollisionShape.IsBox() && (Cast<UBoxComponent>(PrimComp) == nullptr))
+ 		{
+@@ -967,7 +967,7 @@
+ 
+ 		TArray<FOverlapResult> Overlaps;
+ 		ECollisionChannel const BlockingChannel = PrimComp->GetCollisionObjectType();
+-		FCollisionShape const CollisionShape = PrimComp->GetCollisionShape(-Epsilon);
++		FCollisionShape const CollisionShape = UProneCapsuleUtils::GetCollisionShape(PrimComp, -Epsilon);
+ 
+ 		if (CollisionShape.IsBox() && (Cast<UBoxComponent>(PrimComp) == nullptr))
+ 		{
+@@ -1012,7 +1012,7 @@
+ 				if (OverlapComponent && OverlapComponent->GetCollisionResponseToChannel(BlockingChannel) == ECR_Block)
+ 				{
+ 					NumBlockingHits++;
+-					FCollisionShape const NonShrunkenCollisionShape = PrimComp->GetCollisionShape();
++					FCollisionShape const NonShrunkenCollisionShape = UProneCapsuleUtils::GetCollisionShape(PrimComp);
+ 					const FBodyInstance* OverlapBodyInstance = OverlapComponent->GetBodyInstance(NAME_None, true, Overlaps[HitIdx].GetItemIndex());
+ 					bool bSuccess = OverlapBodyInstance && OverlapBodyInstance->OverlapTest(TestWorldTransform.GetLocation(), UProneCapsuleUtils::GetQueryRotation(PrimComp, TestWorldTransform.GetRotation()), NonShrunkenCollisionShape, &MTDResult);
+ 					if (bSuccess)
+@@ -1032,7 +1032,7 @@
+ 					// the clear.
+ 					if (bSuccess && FMath::IsNearlyZero(MTDResult.Distance))
+ 					{
+-						FCollisionShape const ShrunkenCollisionShape = PrimComp->GetCollisionShape(-Epsilon);
++						FCollisionShape const ShrunkenCollisionShape = UProneCapsuleUtils::GetCollisionShape(PrimComp, -Epsilon);
+ 						bSuccess = OverlapBodyInstance && OverlapBodyInstance->OverlapTest(TestWorldTransform.GetLocation(), UProneCapsuleUtils::GetQueryRotation(PrimComp, TestWorldTransform.GetRotation()), ShrunkenCollisionShape, &MTDResult);
+ 						if (bSuccess)
+ 						{
+--- a/Source/Mover/Private/MoveLibrary/AsyncMovementUtils.cpp
++++ b/Source/Mover/Private/MoveLibrary/AsyncMovementUtils.cpp
+@@ -4,6 +4,7 @@
+ #include "MoveLibrary/MovementRecord.h"
+ #include "MoveLibrary/MovementUtils.h"
+ #include "MoverComponent.h"
++#include "MoveLibrary/ProneCapsuleUtils.h"
+ #include "MoverLog.h"
+ #include "Engine/World.h"
+ 
+@@ -181,7 +182,7 @@
+ 			// We really want to make sure that precision differences or differences between the overlap test and sweep tests don't put us into another overlap,
+ 			// so make the overlap test a bit more restrictive.
+ 			const float OverlapInflation = PenetrationOverlapCheckInflationCVar;
+-			bool bEncroached = UMovementUtils::OverlapTest(UpdatedComponent, UpdatedPrimitive, PenetratingHit.TraceStart + ProposedAdjustment, StartRotation, UpdatedPrimitive->GetCollisionObjectType(), UpdatedPrimitive->GetCollisionShape(OverlapInflation), ActorOwner);
++			bool bEncroached = UMovementUtils::OverlapTest(UpdatedComponent, UpdatedPrimitive, PenetratingHit.TraceStart + ProposedAdjustment, StartRotation, UpdatedPrimitive->GetCollisionObjectType(), UProneCapsuleUtils::GetCollisionShape(UpdatedPrimitive, OverlapInflation), ActorOwner);
+ 
+ 			if (!bEncroached)
+ 			{
+--- a/Source/Mover/Private/MoveLibrary/MovementUtilsTypes.cpp
++++ b/Source/Mover/Private/MoveLibrary/MovementUtilsTypes.cpp
+@@ -3,6 +3,7 @@
+ #include "MoveLibrary/MovementUtilsTypes.h"
+ #include "Components/PrimitiveComponent.h"
+ #include "MoverComponent.h"
++#include "MoveLibrary/ProneCapsuleUtils.h"
+ 
+ #include UE_INLINE_GENERATED_CPP_BY_NAME(MovementUtilsTypes)
+ 
+@@ -52,7 +53,7 @@
+ {
+ 	Channel = PrimitiveComp->GetCollisionObjectType();
+ 
+-	Shape = PrimitiveComp->GetCollisionShape();
++	Shape = UProneCapsuleUtils::GetCollisionShape(PrimitiveComp);
+ 
+ 	PrimitiveComp->InitSweepCollisionParams(QueryParams, ResponseParams);
+ 
