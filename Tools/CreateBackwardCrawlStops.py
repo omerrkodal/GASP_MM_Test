@@ -102,6 +102,35 @@ def stabilize_body(path):
     print('MODIFIED:',path,'pelvis XY and mesh-up heading only')
 
 
+def fit_phase_from_knees(path, side):
+    info=ASS.get_anim_sequence_info(path)
+    leads=[]
+    for f in range(info.frame_count):
+        p=pose(path,f/info.frame_rate,True)
+        axis=p['spine_05'].translation-p['pelvis'].translation
+        d=p['calf_l'].translation-p['calf_r'].translation
+        length=math.sqrt(axis.x*axis.x+axis.y*axis.y)
+        leads.append((d.x*axis.x+d.y*axis.y)/length)
+    sign=1 if side=='Left' else -1
+    opposite=min(range(len(leads)),key=lambda f:sign*leads[f])
+    crossings=[(f+abs(leads[f])/(abs(leads[f])+abs(leads[f+1])))/info.frame_rate
+               for f in range(len(leads)-1) if leads[f]*leads[f+1]<0]
+    assert len(crossings)==2 and sign*leads[0]>0 and sign*leads[-1]>0
+    recovery=next(f for f in range(opposite+1,len(leads))
+                  if sign*leads[f]>=0.9*sign*leads[-1])
+    points=[(0,sign),(crossings[0],0),(opposite/info.frame_rate,-sign),
+            (crossings[1],0),(recovery/info.frame_rate,sign),(info.duration,sign)]
+    assert all(a[0]<b[0] for a,b in zip(points,points[1:]))
+    keys=[unreal.RichCurveKey(time=t,value=v,interp_mode=unreal.RichCurveInterpMode.RCIM_LINEAR,
+                             tangent_mode=unreal.RichCurveTangentMode.RCTM_AUTO) for t,v in points]
+    controller=unreal.EditorAssetLibrary.load_asset(path).get_editor_property('controller')
+    identifier=unreal.AnimationCurveIdentifier()
+    identifier.set_curve_identifier('phase',unreal.RawCurveTrackTypes.RCT_FLOAT)
+    assert controller.set_curve_keys(identifier,keys,True)
+    print('MODIFIED:',path,'phase follows knees (+1 left, -1 right)',points)
+    return points
+
+
 def match_forward_curves(path, forward):
     wanted={str(c.curve_name) for c in ASS.list_curves(forward)}
     existing={str(c.curve_name) for c in ASS.list_curves(path)}
@@ -133,7 +162,8 @@ def match_forward_curves(path, forward):
             assert controller.set_curve_keys(identifier,native_keys,True)
     finally:
         controller.close_bracket()
-    print('MODIFIED:',path,'forward-stop curve values and interpolation from',forward)
+    fit_phase_from_knees(path,forward.rsplit('_',1)[1])
+    print('MODIFIED:',path,'forward-stop curves with pose-derived phase')
     return wanted
 
 
@@ -235,7 +265,7 @@ def main():
     plans=[plan(side,info,globals_) for side in ['Left','Right']]
     print('PREVIEW_VALIDATED:',[(p['side'],p['start_time'],p['end_time'],p['max_angle']) for p in plans])
     run=json.loads(unreal.WorkflowService.start_run('Create backward crawl stop pair',json.dumps({'source':LOOP,'outputs':outputs,'method':'phase-matched reversed loop, smooth deceleration, local quaternion blend to matching idle'})))['runId']
-    report={'run':run,'outputs':[],'method':'Reverse loop sampling with root deceleration, quintic idle blending, smooth horizontal pelvis/heading, and matching forward-stop curves; no gameplay wiring.'}
+    report={'run':run,'outputs':[],'method':'Complete reversed loop knee cycle, root deceleration, late idle blending, smooth pelvis/heading, five matching forward-stop curves, and knee-derived phase (+1 left / -1 right); no gameplay wiring.'}
     try:
         for p in plans:
             name='Crawl_Stop_B_'+p['side']
