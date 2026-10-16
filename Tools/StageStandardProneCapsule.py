@@ -148,11 +148,19 @@ def stage():
     {
         Blackboard->Invalidate(CommonBlackboard::LastFloorResult);
     }
-    if (!FMath::IsNearlyZero(HeightDifference) && ShouldExpandingMaintainBase(Cast<UCharacterMoverComponent>(MoverComp)))
+    if (!FMath::IsNearlyZero(HeightDifference))
     {
-        TSharedPtr<FStanceHeightAdjustmentEffect> Effect = MakeShared<FStanceHeightAdjustmentEffect>();
-        Effect->Offset = MoverComp->GetUpDirection() * HeightDifference;
-        MoverComp->QueueInstantMovementEffect(Effect);
+        // Only grounded stance changes move the capsule to preserve its base.
+        if (ShouldExpandingMaintainBase(Cast<UCharacterMoverComponent>(MoverComp)))
+        {
+            TSharedPtr<FStanceHeightAdjustmentEffect> Effect = MakeShared<FStanceHeightAdjustmentEffect>();
+            Effect->Offset = MoverComp->GetUpDirection() * HeightDifference;
+            MoverComp->QueueInstantMovementEffect(Effect);
+        }
+
+        // The visual attachment must follow every size change, including in air.
+        // Otherwise entering/exiting a stance on different movement modes leaves
+        // a permanent mesh offset after landing or returning to standing.
         FTransform VisualTransform = MoverComp->GetBaseVisualComponentTransform();
         VisualTransform.AddToTranslation(FVector::UpVector * -HeightDifference);
         MoverComp->SetBaseVisualComponentTransform(VisualTransform);
