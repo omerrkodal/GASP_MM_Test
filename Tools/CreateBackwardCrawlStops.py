@@ -29,11 +29,6 @@ def progress(t):
     return BRAKE_START + (BRAKE_END - BRAKE_START)*(u - u**3 + 0.5*u**4)
 
 
-def speed_weight(t):
-    u = max(0.0, min(1.0, (t - BRAKE_START)/(BRAKE_END - BRAKE_START)))
-    return 1 - u*u*(3 - 2*u)
-
-
 def quat_blend(a, b, w):
     av, bv = [a.x, a.y, a.z, a.w], [b.x, b.y, b.z, b.w]
     dot = sum(x*y for x,y in zip(av,bv))
@@ -60,6 +55,87 @@ def transform(position, rotation, scale):
     value.rotation = rotation
     value.scale3d = scale
     return value
+
+
+def quat_mul(a, b):
+    return unreal.Quat(a.w*b.x+a.x*b.w+a.y*b.z-a.z*b.y,
+                       a.w*b.y-a.x*b.z+a.y*b.w+a.z*b.x,
+                       a.w*b.z+a.x*b.y-a.y*b.x+a.z*b.w,
+                       a.w*b.w-a.x*b.x-a.y*b.y-a.z*b.z)
+
+
+def body_heading(p):
+    v = p['spine_05'].translation - p['pelvis'].translation
+    return math.atan2(v.x, v.y)
+
+
+def stabilize_body(path):
+    """Keep horizontal pelvis position and body heading on a smooth endpoint path.
+
+    Root motion and every local child-bone track stay untouched. Corrections are
+    around mesh up, converted into the pelvis parent's (root) space.
+    """
+    local = [pose(path,f/FPS) for f in range(FRAMES)]
+    global_ = [pose(path,f/FPS,True) for f in range(FRAMES)]
+    a,b = local[0]['pelvis'].translation,local[-1]['pelvis'].translation
+    ha,hb = body_heading(global_[0]),body_heading(global_[-1])
+    dh = (hb-ha+math.pi) % (2*math.pi)-math.pi
+    positions,rotations,scales=[],[],[]
+    for f,p in enumerate(local):
+        w=smooth((f/FPS-BLEND_START)/(BLEND_END-BLEND_START))
+        tr=p['pelvis']
+        positions.append(unreal.Vector(a.x+(b.x-a.x)*w,a.y+(b.y-a.y)*w,tr.translation.z))
+        heading=ha+dh*w
+        angle=(body_heading(global_[f])-heading+math.pi) % (2*math.pi)-math.pi
+        correction=unreal.Quat(0,0,math.sin(angle/2),math.cos(angle/2))
+        root=p['root'].rotation
+        inverse=unreal.Quat(-root.x,-root.y,-root.z,root.w)
+        parent_delta=quat_mul(quat_mul(inverse,correction),root)
+        rotations.append(quat_mul(parent_delta,tr.rotation))
+        scales.append(tr.scale3d)
+    asset=unreal.EditorAssetLibrary.load_asset(path)
+    controller=asset.get_editor_property('controller')
+    controller.open_bracket('Stabilize backward crawl pelvis and body heading')
+    try:
+        assert controller.set_bone_track_keys('pelvis',positions,rotations,scales,True)
+    finally:
+        controller.close_bracket()
+    print('MODIFIED:',path,'pelvis XY and mesh-up heading only')
+
+
+def match_forward_curves(path, forward):
+    wanted={str(c.curve_name) for c in ASS.list_curves(forward)}
+    existing={str(c.curve_name) for c in ASS.list_curves(path)}
+    for curve in sorted(existing-wanted):
+        assert ASS.remove_curve(path,curve)
+        print('REMOVED:',path,'curve',curve)
+    asset=unreal.EditorAssetLibrary.load_asset(path)
+    controller=asset.get_editor_property('controller')
+    modes={'Linear':unreal.RichCurveInterpMode.RCIM_LINEAR,
+           'Constant':unreal.RichCurveInterpMode.RCIM_CONSTANT,
+           'Cubic':unreal.RichCurveInterpMode.RCIM_CUBIC}
+    tangents={'Auto':unreal.RichCurveTangentMode.RCTM_AUTO,
+              'User':unreal.RichCurveTangentMode.RCTM_USER,
+              'Break':unreal.RichCurveTangentMode.RCTM_BREAK}
+    controller.open_bracket('Match forward crawl stop curve values and interpolation')
+    try:
+        for curve in sorted(wanted):
+            if curve not in existing:
+                assert ASS.add_curve(path,curve,False)
+            native_keys=[]
+            for key in ASS.get_curve_keyframes(forward,curve):
+                # UE's Python RichCurveKey does not expose tangent values.
+                # These clips use linear changing keys and a flat cubic key.
+                assert key.interp_mode!='Cubic' or (key.arrive_tangent==0 and key.leave_tangent==0)
+                native_keys.append(unreal.RichCurveKey(time=key.time,value=key.value,
+                                   interp_mode=modes[key.interp_mode],tangent_mode=tangents[key.tangent_mode]))
+            identifier=unreal.AnimationCurveIdentifier()
+            identifier.set_curve_identifier(curve,unreal.RawCurveTrackTypes.RCT_FLOAT)
+            assert controller.set_curve_keys(identifier,native_keys,True)
+    finally:
+        controller.close_bracket()
+    print('MODIFIED:',path,'forward-stop curve values and interpolation from',forward)
+    return wanted
 
 
 def plan(side, loop_info, loop_poses):
@@ -126,7 +202,7 @@ def main():
     plans=[plan(side,info,globals_) for side in ['Left','Right']]
     print('PREVIEW_VALIDATED:',[(p['side'],p['start_time'],p['end_time'],p['max_angle']) for p in plans])
     run=json.loads(unreal.WorkflowService.start_run('Create backward crawl stop pair',json.dumps({'source':LOOP,'outputs':outputs,'method':'phase-matched reversed loop, smooth deceleration, local quaternion blend to matching idle'})))['runId']
-    report={'run':run,'outputs':[],'method':'Reverse loop sampling with root deceleration and quintic local-space idle blending; no gameplay wiring.'}
+    report={'run':run,'outputs':[],'method':'Reverse loop sampling with root deceleration, quintic idle blending, smooth horizontal pelvis/heading, and matching forward-stop curves; no gameplay wiring.'}
     try:
         for p in plans:
             name='Crawl_Stop_B_'+p['side']
@@ -136,21 +212,8 @@ def main():
             assert ASS.set_enable_root_motion(path,True)
             assert ASS.set_root_motion_root_lock(path,'RefPose')
             assert ASS.set_rate_scale(path,1)
-            # Use source curve names and values; no copied forward Foley events.
-            curve_names=set(str(c.curve_name) for c in ASS.list_curves(LOOP)) | set(str(c.curve_name) for c in ASS.list_curves(p['idle']))
-            idle_names=set(str(c.curve_name) for c in ASS.list_curves(p['idle']))
-            loop_names=set(str(c.curve_name) for c in ASS.list_curves(LOOP))
-            for curve in sorted(curve_names):
-                assert ASS.add_curve(path,curve,False)
-                keys=[]
-                for f,(st,w) in enumerate(zip(p['times'],p['weights'])):
-                    av=ASS.get_curve_value_at_time(LOOP,curve,st) if curve in loop_names else 0.0
-                    bv=ASS.get_curve_value_at_time(p['idle'],curve,0) if curve in idle_names else av
-                    value=av*(1-w)+bv*w
-                    if curve=='movedata_speed':
-                        value=ASS.get_curve_value_at_time(LOOP,curve,st)*speed_weight(f/FPS)
-                    keys.append(unreal.CurveKeyframe(time=f/FPS,value=value,interp_mode='Linear'))
-                assert ASS.set_curve_keys(path,curve,keys)
+            stabilize_body(path)
+            curve_names=match_forward_curves(path,OUT+'/Crawl_Stop_F_'+p['side'])
             unreal.EditorAssetLibrary.set_metadata_tag(unreal.EditorAssetLibrary.load_asset(path),'GeneratedFrom',LOOP+'; '+p['idle'])
             assert unreal.EditorAssetLibrary.save_asset(path,False)
             print('SAVED:',path)
