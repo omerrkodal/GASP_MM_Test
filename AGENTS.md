@@ -355,3 +355,8 @@ crash handler — MCP will hang; relaunch); fresh and small → the editor is fi
 
 
 <!-- Prone wall-block gotcha: Pelvis-anchored 30cm-half-height movement traces overlap the floor while crawling and alternate floor/wall normals, restoring movement input. Block Movement if Hit now selects capsule-center + Input*86cm with 15cm radius/half-height when WantsToCrawl; original standing/crouch trace remains. Runtime prone wall/retreat/clear-path regression passed 2026-10-15. -->
+
+
+<!-- Mover collision-stop gotcha: UE 5.8 RequestStopMovement has no implementation. SandboxCharacter_Mover Block Movement if Hit stops inward non-floor demand at HeadOn > 0.001 and queues non-additive ApplyVelocityEffect preserving vertical velocity for gravity. Retreat passes unchanged. Blueprint compiled; runtime wall/retreat/slope regression remains unverified. -->
+
+<!-- Root radius curve hold gotcha: Get_OffsetRootTranslationRadius reads RootRadiusCurveOutput for crawl; BlueprintThreadSafeUpdateAnimation samples Set_OffsetRootTranslationRadius once and uses DeltaTime for a latched 1-second hold on the first decrease. Continued falls do not restart it; a rise resumes tracking and non-crawl resets state. Do not advance timers inside the pure getter. Ten native Blueprint fixtures passed, including expiry and repeated getter calls. -->
