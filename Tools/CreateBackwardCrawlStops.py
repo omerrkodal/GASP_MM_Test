@@ -13,7 +13,6 @@ FRAMES = 60
 DURATION = (FRAMES - 1) / FPS
 BRAKE_START, BRAKE_END = 0.35, 1.15
 BLEND_START, BLEND_END = 0.35, 1.55
-TRAVEL_TIME = (BRAKE_START + BRAKE_END) / 2
 REPORT_DIR = os.path.join(unreal.Paths.project_saved_dir(), 'VibeUE', 'BackwardCrawlStops')
 
 
@@ -140,33 +139,59 @@ def match_forward_curves(path, forward):
 
 def plan(side, loop_info, loop_poses):
     idle = BASE + '/Idle/Crawl_Idle_Loop_' + side
-    target = pose(idle, 0, True)
-    def score(f):
-        p = loop_poses[f]
-        return sum(((p[b].translation-p['root'].translation) -
-                    (target[b].translation-target['root'].translation)).length_squared()*w
-                   for b,w in [('hand_l',2),('hand_r',2),('foot_l',1),('foot_r',1),('pelvis',1)])
-    candidates = range(math.ceil(TRAVEL_TIME*FPS), loop_info.frame_count-math.ceil(TRAVEL_TIME*FPS))
-    end_frame = min(candidates, key=score)
-    end_time = end_frame/FPS
-    start_time = end_time + TRAVEL_TIME
+    forward = OUT + '/Crawl_Stop_F_' + side
+    lead=lambda p:p['calf_l'].translation.y-p['calf_r'].translation.y
+    forward_leads=[lead(pose(forward,f/FPS,True)) for f in range(FRAMES)]
+    source_leads=[lead(p) for p in loop_poses]
+    sign=1 if side=='Left' else -1
+    middle_frame=min(range(1,FRAMES-1),key=lambda f:sign*forward_leads[f])
+    return_frame=next(f for f in range(middle_frame+1,FRAMES)
+                      if sign*forward_leads[f]>=0.9*sign*forward_leads[-1])
+    extrema=[f for f in range(1,len(source_leads)-1)
+             if (source_leads[f]-source_leads[f-1])*(source_leads[f+1]-source_leads[f])<0]
+    candidates=[]
+    for i in range(2,len(extrema)):
+        a,b,c=extrema[i],extrema[i-1],extrema[i-2]
+        if sign*source_leads[a]>8 and sign*source_leads[b]<-8 and sign*source_leads[c]>8:
+            candidates.append((a,b,c))
+    assert candidates, 'No complete matching backward knee cycle'
+    target=[forward_leads[0],forward_leads[middle_frame],forward_leads[-1]]
+    phase_frames=min(candidates,key=lambda fs:sum((source_leads[f]-v)**2 for f,v in zip(fs,target)))
+    start_frame,middle_source,end_frame=phase_frames
+    start_time,end_time=start_frame/FPS,end_frame/FPS
+    mid_t,end_t=middle_frame/FPS,return_frame/FPS
+    v0=(middle_source-start_frame)/mid_t
+    vm=(end_frame-start_frame)/end_t
+
+    def source_frame(t):
+        if t>=end_t:
+            return end_frame
+        if t<=mid_t:
+            ta,tb,a,b,va,vb=0,mid_t,start_frame,middle_source,v0,vm
+        else:
+            ta,tb,a,b,va,vb=mid_t,end_t,middle_source,end_frame,vm,0
+        u=(t-ta)/(tb-ta)
+        return (2*u**3-3*u**2+1)*a+(u**3-2*u**2+u)*(tb-ta)*va+(-2*u**3+3*u**2)*b+(u**3-u**2)*(tb-ta)*vb
+
     origin = pose(LOOP, start_time)['root'].translation
     idle_duration = ASS.get_animation_length(idle)
     samples, times, weights = [], [], []
     for f in range(FRAMES):
         t = f/FPS
-        source_time = start_time-progress(t)
+        source_time = source_frame(t)/FPS
         a = pose(LOOP, source_time)
         # End at idle frame zero with its natural incoming breathing velocity.
         b = pose(idle, (idle_duration+t-DURATION) % idle_duration)
-        w = smooth((t-BLEND_START)/(BLEND_END-BLEND_START))
+        # Keep the complete alternating step; settle only after the opposite knee leads.
+        w = smooth((t-1.2)/(1.75-1.2))
         result = {}
         for bone, at in a.items():
             bt = b[bone]
             result[bone] = transform(at.translation*(1-w)+bt.translation*w,
                                      quat_blend(at.rotation,bt.rotation,w),
                                      at.scale3d*(1-w)+bt.scale3d*w)
-        root = a['root']
+        # Root braking remains independent of the finishing leg recovery.
+        root = pose(LOOP,start_time-progress(t))['root']
         delta = root.translation-origin
         result['root'] = transform(unreal.Vector(delta.x,delta.y,0),root.rotation,root.scale3d)
         samples.append(result)
@@ -178,7 +203,14 @@ def plan(side, loop_info, loop_poses):
             qa,qb=a[bone].rotation,b[bone].rotation
             dot=abs(qa.x*qb.x+qa.y*qb.y+qa.z*qb.z+qa.w*qb.w)
             max_angle=max(max_angle,math.degrees(2*math.acos(min(1.0,dot))))
-    assert max_angle < 35, ('discontinuous pose', side, max_angle)
+    source_local=[pose(LOOP,f/FPS) for f in range(end_frame,start_frame+1)]
+    source_max=0.0
+    for a,b in zip(source_local,source_local[1:]):
+        for bone in a:
+            qa,qb=a[bone].rotation,b[bone].rotation
+            dot=abs(qa.x*qb.x+qa.y*qb.y+qa.z*qb.z+qa.w*qb.w)
+            source_max=max(source_max,math.degrees(2*math.acos(min(1.0,dot))))
+    assert max_angle <= source_max*1.25+1, ('retiming exceeds source joint speed',side,max_angle,source_max)
     assert samples[-1]['root'].translation.y < -1, 'Expected backward root travel'
     tracks=[]
     for bone in samples[0]:
@@ -187,7 +219,8 @@ def plan(side, loop_info, loop_poses):
               for f,p in enumerate(samples)]
         tracks.append(unreal.BoneTrackData(bone_name=bone,keyframes=keys))
     return dict(side=side,idle=idle,start_time=start_time,end_time=end_time,
-                samples=samples,times=times,weights=weights,tracks=tracks,max_angle=max_angle)
+                samples=samples,times=times,weights=weights,tracks=tracks,max_angle=max_angle,
+                phase_frames=phase_frames,middle_output_frame=middle_frame,return_output_frame=return_frame)
 
 
 def main():
@@ -227,7 +260,18 @@ def main():
             root_end=end['root'].translation
             late=pose(path,BRAKE_END)['root'].translation
             assert (late-root_end).length()<0.05
+            sign=1 if p['side']=='Left' else -1
+            lead_order=[]
+            for f in range(FRAMES):
+                gp=pose(path,f/FPS,True)
+                lead=gp['calf_l'].translation.y-gp['calf_r'].translation.y
+                state=1 if lead>3 else -1 if lead<-3 else 0
+                if state and (not lead_order or lead_order[-1]!=state):
+                    lead_order.append(state)
+            assert lead_order==[sign,-sign,sign], ('Incomplete knee cycle',lead_order)
             entry={'asset':path,'idle':p['idle'],'loop_start_time':p['start_time'],'loop_end_time':p['end_time'],
+                   'source_knee_phase_frames':p['phase_frames'],'knee_lead_order':lead_order,
+                   'opposite_knee_output_frame':p['middle_output_frame'],'return_output_frame':p['return_output_frame'],
                    'duration':reread.duration,'frame_count':reread.frame_count,'bone_tracks':reread.bone_track_count,
                    'root_delta_cm':[root_end.x-root_start.x,root_end.y-root_start.y,root_end.z-root_start.z],
                    'max_local_rotation_step_deg':p['max_angle'],'idle_local_translation_error_cm':error,
