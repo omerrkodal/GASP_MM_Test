@@ -15,7 +15,7 @@
 namespace
 {
 TAutoConsoleVariable<int32> CVarDrawProneFloorTraces(TEXT("mover.debug.DrawProneFloorTraces"), 0,
-    TEXT("Draw fixed-offset prone floor probes: Tip cyan, Back magenta, Center yellow; green hits, red misses, orange unwalkable."), ECVF_Cheat);
+    TEXT("Draw animated-root prone floor probes: Tip cyan, Back magenta, Center yellow; green hits, red misses, orange unwalkable."), ECVF_Cheat);
 }
 
 FVector UProneFloorTraceUtils::GetProbeAnchor(const FVector& Origin, const FVector& Heading,
@@ -44,8 +44,13 @@ FProneFloorData UProneFloorTraceUtils::SampleProneFloorData(const UMoverComponen
     if (!Settings) { return Data; }
     const FVector Up = MoverComp->GetUpDirection().GetSafeNormal();
     if (Up.IsNearlyZero()) { return Data; }
-    const FVector Origin = Primitive->GetComponentLocation();
-    const FVector Heading = Primitive->GetForwardVector();
+    const FTransform UpdatedToWorld = Primitive->GetComponentTransform();
+    FVector Origin = UpdatedToWorld.GetLocation();
+    FVector Heading = UpdatedToWorld.GetUnitAxis(EAxis::X);
+    // Use the animated character root, including Offset Root Bone translation/facing.
+    // Only value data is read here; skeletal pose access stays on the game thread.
+    // Before the first valid mesh snapshot, retain the original component fallback.
+    CharacterMover->GetProneFloorProbeFrame(UpdatedToWorld, Origin, Heading);
     const UCommonLegacyMovementSettings* MovementSettings = MoverComp->FindSharedSettings<UCommonLegacyMovementSettings>();
     const float MaxSlopeCosine = MovementSettings ? MovementSettings->MaxWalkSlopeCosine : 0.71f;
     FCollisionQueryParams Params(SCENE_QUERY_STAT(ProneFloorProbes), false, Primitive->GetOwner());

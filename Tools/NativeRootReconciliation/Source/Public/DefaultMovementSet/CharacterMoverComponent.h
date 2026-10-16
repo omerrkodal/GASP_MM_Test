@@ -3,6 +3,7 @@
 #pragma once
 
 #include "MoverComponent.h"
+#include "HAL/CriticalSection.h"
 #include "DefaultMovementSet/LayeredMoves/MontageStateProvider.h"
 #include "MovementModifiers/StanceModifier.h"
 #include "DefaultMovementSet/ProneFloorData.h"
@@ -150,11 +151,26 @@ public:
     UFUNCTION(BlueprintPure, Category="Mover|Prone")
     UE_API void GetProneFloorData(FMoverFloorData& Tip, FMoverFloorData& Back, FMoverFloorData& Center) const;
 
+    /** Read the last game-thread animated root snapshot in the current movement frame.
+     * The sampler never reads skeletal bones. Returns false until a mesh pose is available.
+     */
+    UE_API bool GetProneFloorProbeFrame(const FTransform& UpdatedToWorld,
+        FVector& OutOrigin, FVector& OutHeading) const;
+
 	// Broadcast when this actor changes stances.
 	UPROPERTY(BlueprintAssignable, Category = Mover)
 	FMover_OnStanceChanged OnStanceChanged;
 	
 protected:
+    // Cosmetic floor-probe anchor only. Stance state still serializes the resulting hits.
+    // Root pose is sampled on the game thread once per frame, never during worker simulation.
+    void CacheProneFloorProbeRoot();
+    mutable FRWLock ProneProbeRootLock;
+    FVector ProneProbeRootRelativeLocation = FVector::ZeroVector;
+    FVector ProneProbeRootRelativeForward = FVector::ForwardVector;
+    uint64 LastProneProbeRootCacheFrame = MAX_uint64;
+    bool bHasProneProbeRoot = false;
+
 	// Multiple post-evaluation callbacks must not multiply timers or the frame budget.
 	uint64 LastOffsetRootCorrectionFrame = MAX_uint64;
 	FVector OffsetRootReconciliationTarget = FVector::ZeroVector;

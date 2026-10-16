@@ -1,0 +1,157 @@
+--- a/Public/DefaultMovementSet/CharacterMoverComponent.h
++++ b/Public/DefaultMovementSet/CharacterMoverComponent.h
+@@ -3,6 +3,7 @@
+ #pragma once
+ 
+ #include "MoverComponent.h"
++#include "HAL/CriticalSection.h"
+ #include "DefaultMovementSet/LayeredMoves/MontageStateProvider.h"
+ #include "MovementModifiers/StanceModifier.h"
+ #include "DefaultMovementSet/ProneFloorData.h"
+@@ -150,11 +151,26 @@
+     UFUNCTION(BlueprintPure, Category="Mover|Prone")
+     UE_API void GetProneFloorData(FMoverFloorData& Tip, FMoverFloorData& Back, FMoverFloorData& Center) const;
+ 
++    /** Read the last game-thread animated root snapshot in the current movement frame.
++     * The sampler never reads skeletal bones. Returns false until a mesh pose is available.
++     */
++    UE_API bool GetProneFloorProbeFrame(const FTransform& UpdatedToWorld,
++        FVector& OutOrigin, FVector& OutHeading) const;
++
+ 	// Broadcast when this actor changes stances.
+ 	UPROPERTY(BlueprintAssignable, Category = Mover)
+ 	FMover_OnStanceChanged OnStanceChanged;
+ 	
+ protected:
++    // Cosmetic floor-probe anchor only. Stance state still serializes the resulting hits.
++    // Root pose is sampled on the game thread once per frame, never during worker simulation.
++    void CacheProneFloorProbeRoot();
++    mutable FRWLock ProneProbeRootLock;
++    FVector ProneProbeRootRelativeLocation = FVector::ZeroVector;
++    FVector ProneProbeRootRelativeForward = FVector::ForwardVector;
++    uint64 LastProneProbeRootCacheFrame = MAX_uint64;
++    bool bHasProneProbeRoot = false;
++
+ 	// Multiple post-evaluation callbacks must not multiply timers or the frame budget.
+ 	uint64 LastOffsetRootCorrectionFrame = MAX_uint64;
+ 	FVector OffsetRootReconciliationTarget = FVector::ZeroVector;
+--- a/Private/DefaultMovementSet/CharacterMoverComponent.cpp
++++ b/Private/DefaultMovementSet/CharacterMoverComponent.cpp
+@@ -10,6 +10,8 @@
+ #include "DefaultMovementSet/InstantMovementEffects/OffsetRootReconcileEffect.h"
+ #include "Engine/World.h"
+ #include "CoreGlobals.h"
++#include "Engine/SkeletalMesh.h"
++#include "Misc/ScopeRWLock.h"
+ #include "DefaultMovementSet/Modes/FallingMode.h"
+ #include "DefaultMovementSet/Modes/FlyingMode.h"
+ #include "DefaultMovementSet/Modes/WalkingMode.h"
+@@ -298,8 +300,61 @@
+ 	bWantsToCrouch = false;
+ }
+ 
++bool UCharacterMoverComponent::GetProneFloorProbeFrame(const FTransform& UpdatedToWorld,
++    FVector& OutOrigin, FVector& OutHeading) const
++{
++    FReadScopeLock Lock(ProneProbeRootLock);
++    if (!bHasProneProbeRoot) { return false; }
++    OutOrigin = UpdatedToWorld.TransformPosition(ProneProbeRootRelativeLocation);
++    OutHeading = UpdatedToWorld.TransformVectorNoScale(ProneProbeRootRelativeForward).GetSafeNormal();
++    return !OutOrigin.ContainsNaN() && !OutHeading.IsNearlyZero();
++}
++
++void UCharacterMoverComponent::CacheProneFloorProbeRoot()
++{
++    // Bone buffers belong to animation. Only capture the last completed pose on the GT.
++    if (!IsInGameThread() || LastProneProbeRootCacheFrame == GFrameCounter) { return; }
++    LastProneProbeRootCacheFrame = GFrameCounter;
++    const USkeletalMeshComponent* Mesh = GetPrimaryVisualComponent<USkeletalMeshComponent>();
++    const USceneComponent* Updated = GetUpdatedComponent();
++    const USkeletalMesh* MeshAsset = Mesh ? Mesh->GetSkeletalMeshAsset() : nullptr;
++    if (!Mesh || !Updated || !MeshAsset || Mesh->GetNumBones() == 0 ||
++        MeshAsset->GetRefSkeleton().GetNum() == 0)
++    {
++        FWriteScopeLock Lock(ProneProbeRootLock);
++        bHasProneProbeRoot = false;
++        return;
++    }
++
++    const FTransform UpdatedToWorld = Updated->GetComponentTransform();
++    const FTransform MeshToWorld = Mesh->GetComponentTransform();
++    const FTransform RootToMesh = Mesh->GetSocketTransform(Mesh->GetBoneName(0), RTS_Component);
++    const FTransform RootToWorld = RootToMesh * MeshToWorld;
++    const FVector RelativeLocation = UpdatedToWorld.InverseTransformPosition(RootToWorld.GetLocation());
++
++    // Apply the animated root rotation relative to the imported root reference.
++    // Express the character's forward axis in mesh space first: no hard-coded +/-90 yaw.
++    const FQuat ReferenceRootRotation = MeshAsset->GetRefSkeleton().GetRefBonePose()[0].GetRotation();
++    const FVector ForwardInMesh = MeshToWorld.InverseTransformVectorNoScale(
++        UpdatedToWorld.GetUnitAxis(EAxis::X));
++    const FVector AnimatedForwardInMesh = (RootToMesh.GetRotation() * ReferenceRootRotation.Inverse())
++        .RotateVector(ForwardInMesh);
++    const FVector RelativeForward = UpdatedToWorld.InverseTransformVectorNoScale(
++        MeshToWorld.TransformVectorNoScale(AnimatedForwardInMesh)).GetSafeNormal();
++
++    FWriteScopeLock Lock(ProneProbeRootLock);
++    bHasProneProbeRoot = !RelativeLocation.ContainsNaN() && !RelativeForward.ContainsNaN() &&
++        !RelativeForward.IsNearlyZero();
++    if (bHasProneProbeRoot)
++    {
++        ProneProbeRootRelativeLocation = RelativeLocation;
++        ProneProbeRootRelativeForward = RelativeForward;
++    }
++}
++
+ void UCharacterMoverComponent::OnMoverPreSimulationTick(const FMoverTimeStep& TimeStep, const FMoverInputCmdContext& InputCmd)
+ {
++    CacheProneFloorProbeRoot();
+ 	if (bHandleJump)
+ 	{
+ 		const FCharacterDefaultInputs* CharacterInputs = InputCmd.InputCollection.FindDataByType<FCharacterDefaultInputs>();
+@@ -379,16 +434,9 @@
+ 
+ void UCharacterMoverComponent::OnHandlerSettingChanged()
+ {
+-	const bool bIsHandlingAnySettings = bHandleJump || bHandleStanceChanges;
+-
+-	if (bIsHandlingAnySettings)
+-	{
+-		OnPreSimulationTick.AddUniqueDynamic(this, &UCharacterMoverComponent::OnMoverPreSimulationTick);
+-	}
+-	else
+-	{
+-		OnPreSimulationTick.RemoveDynamic(this, &UCharacterMoverComponent::OnMoverPreSimulationTick);
+-	}
++    // Probe snapshots are also needed when another system handles stance/jump input.
++    // The input handlers themselves remain gated by their existing flags in the callback.
++    OnPreSimulationTick.AddUniqueDynamic(this, &UCharacterMoverComponent::OnMoverPreSimulationTick);
+ }
+ 
+ void UCharacterMoverComponent::UpdateSyncedMontageState(const FMoverTimeStep& TimeStep, const FMoverSyncState& SyncState, const FMoverAuxStateContext& AuxState)
+--- a/Private/MoveLibrary/ProneFloorTraceUtils.cpp
++++ b/Private/MoveLibrary/ProneFloorTraceUtils.cpp
+@@ -15,7 +15,7 @@
+ namespace
+ {
+ TAutoConsoleVariable<int32> CVarDrawProneFloorTraces(TEXT("mover.debug.DrawProneFloorTraces"), 0,
+-    TEXT("Draw fixed-offset prone floor probes: Tip cyan, Back magenta, Center yellow; green hits, red misses, orange unwalkable."), ECVF_Cheat);
++    TEXT("Draw animated-root prone floor probes: Tip cyan, Back magenta, Center yellow; green hits, red misses, orange unwalkable."), ECVF_Cheat);
+ }
+ 
+ FVector UProneFloorTraceUtils::GetProbeAnchor(const FVector& Origin, const FVector& Heading,
+@@ -44,8 +44,13 @@
+     if (!Settings) { return Data; }
+     const FVector Up = MoverComp->GetUpDirection().GetSafeNormal();
+     if (Up.IsNearlyZero()) { return Data; }
+-    const FVector Origin = Primitive->GetComponentLocation();
+-    const FVector Heading = Primitive->GetForwardVector();
++    const FTransform UpdatedToWorld = Primitive->GetComponentTransform();
++    FVector Origin = UpdatedToWorld.GetLocation();
++    FVector Heading = UpdatedToWorld.GetUnitAxis(EAxis::X);
++    // Use the animated character root, including Offset Root Bone translation/facing.
++    // Only value data is read here; skeletal pose access stays on the game thread.
++    // Before the first valid mesh snapshot, retain the original component fallback.
++    CharacterMover->GetProneFloorProbeFrame(UpdatedToWorld, Origin, Heading);
+     const UCommonLegacyMovementSettings* MovementSettings = MoverComp->FindSharedSettings<UCommonLegacyMovementSettings>();
+     const float MaxSlopeCosine = MovementSettings ? MovementSettings->MaxWalkSlopeCosine : 0.71f;
+     FCollisionQueryParams Params(SCENE_QUERY_STAT(ProneFloorProbes), false, Primitive->GetOwner());

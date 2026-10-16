@@ -10,6 +10,8 @@
 #include "DefaultMovementSet/InstantMovementEffects/OffsetRootReconcileEffect.h"
 #include "Engine/World.h"
 #include "CoreGlobals.h"
+#include "Engine/SkeletalMesh.h"
+#include "Misc/ScopeRWLock.h"
 #include "DefaultMovementSet/Modes/FallingMode.h"
 #include "DefaultMovementSet/Modes/FlyingMode.h"
 #include "DefaultMovementSet/Modes/WalkingMode.h"
@@ -298,8 +300,61 @@ void UCharacterMoverComponent::UnProne()
 	bWantsToCrouch = false;
 }
 
+bool UCharacterMoverComponent::GetProneFloorProbeFrame(const FTransform& UpdatedToWorld,
+    FVector& OutOrigin, FVector& OutHeading) const
+{
+    FReadScopeLock Lock(ProneProbeRootLock);
+    if (!bHasProneProbeRoot) { return false; }
+    OutOrigin = UpdatedToWorld.TransformPosition(ProneProbeRootRelativeLocation);
+    OutHeading = UpdatedToWorld.TransformVectorNoScale(ProneProbeRootRelativeForward).GetSafeNormal();
+    return !OutOrigin.ContainsNaN() && !OutHeading.IsNearlyZero();
+}
+
+void UCharacterMoverComponent::CacheProneFloorProbeRoot()
+{
+    // Bone buffers belong to animation. Only capture the last completed pose on the GT.
+    if (!IsInGameThread() || LastProneProbeRootCacheFrame == GFrameCounter) { return; }
+    LastProneProbeRootCacheFrame = GFrameCounter;
+    const USkeletalMeshComponent* Mesh = GetPrimaryVisualComponent<USkeletalMeshComponent>();
+    const USceneComponent* Updated = GetUpdatedComponent();
+    const USkeletalMesh* MeshAsset = Mesh ? Mesh->GetSkeletalMeshAsset() : nullptr;
+    if (!Mesh || !Updated || !MeshAsset || Mesh->GetNumBones() == 0 ||
+        MeshAsset->GetRefSkeleton().GetNum() == 0)
+    {
+        FWriteScopeLock Lock(ProneProbeRootLock);
+        bHasProneProbeRoot = false;
+        return;
+    }
+
+    const FTransform UpdatedToWorld = Updated->GetComponentTransform();
+    const FTransform MeshToWorld = Mesh->GetComponentTransform();
+    const FTransform RootToMesh = Mesh->GetSocketTransform(Mesh->GetBoneName(0), RTS_Component);
+    const FTransform RootToWorld = RootToMesh * MeshToWorld;
+    const FVector RelativeLocation = UpdatedToWorld.InverseTransformPosition(RootToWorld.GetLocation());
+
+    // Apply the animated root rotation relative to the imported root reference.
+    // Express the character's forward axis in mesh space first: no hard-coded +/-90 yaw.
+    const FQuat ReferenceRootRotation = MeshAsset->GetRefSkeleton().GetRefBonePose()[0].GetRotation();
+    const FVector ForwardInMesh = MeshToWorld.InverseTransformVectorNoScale(
+        UpdatedToWorld.GetUnitAxis(EAxis::X));
+    const FVector AnimatedForwardInMesh = (RootToMesh.GetRotation() * ReferenceRootRotation.Inverse())
+        .RotateVector(ForwardInMesh);
+    const FVector RelativeForward = UpdatedToWorld.InverseTransformVectorNoScale(
+        MeshToWorld.TransformVectorNoScale(AnimatedForwardInMesh)).GetSafeNormal();
+
+    FWriteScopeLock Lock(ProneProbeRootLock);
+    bHasProneProbeRoot = !RelativeLocation.ContainsNaN() && !RelativeForward.ContainsNaN() &&
+        !RelativeForward.IsNearlyZero();
+    if (bHasProneProbeRoot)
+    {
+        ProneProbeRootRelativeLocation = RelativeLocation;
+        ProneProbeRootRelativeForward = RelativeForward;
+    }
+}
+
 void UCharacterMoverComponent::OnMoverPreSimulationTick(const FMoverTimeStep& TimeStep, const FMoverInputCmdContext& InputCmd)
 {
+    CacheProneFloorProbeRoot();
 	if (bHandleJump)
 	{
 		const FCharacterDefaultInputs* CharacterInputs = InputCmd.InputCollection.FindDataByType<FCharacterDefaultInputs>();
@@ -379,16 +434,9 @@ void UCharacterMoverComponent::OnMoverPostFinalize(const FMoverSyncState& SyncSt
 
 void UCharacterMoverComponent::OnHandlerSettingChanged()
 {
-	const bool bIsHandlingAnySettings = bHandleJump || bHandleStanceChanges;
-
-	if (bIsHandlingAnySettings)
-	{
-		OnPreSimulationTick.AddUniqueDynamic(this, &UCharacterMoverComponent::OnMoverPreSimulationTick);
-	}
-	else
-	{
-		OnPreSimulationTick.RemoveDynamic(this, &UCharacterMoverComponent::OnMoverPreSimulationTick);
-	}
+    // Probe snapshots are also needed when another system handles stance/jump input.
+    // The input handlers themselves remain gated by their existing flags in the callback.
+    OnPreSimulationTick.AddUniqueDynamic(this, &UCharacterMoverComponent::OnMoverPreSimulationTick);
 }
 
 void UCharacterMoverComponent::UpdateSyncedMontageState(const FMoverTimeStep& TimeStep, const FMoverSyncState& SyncState, const FMoverAuxStateContext& AuxState)
