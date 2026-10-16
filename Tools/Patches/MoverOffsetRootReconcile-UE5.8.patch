@@ -1,0 +1,286 @@
+--- a/Private/DefaultMovementSet/CharacterMoverComponent.cpp
++++ b/Private/DefaultMovementSet/CharacterMoverComponent.cpp
+@@ -7,6 +7,9 @@
+ #include "Animation/AnimMontage.h"
+ #include "Components/SkeletalMeshComponent.h"
+ #include "DefaultMovementSet/InstantMovementEffects/BasicInstantMovementEffects.h"
++#include "DefaultMovementSet/InstantMovementEffects/OffsetRootReconcileEffect.h"
++#include "Engine/World.h"
++#include "CoreGlobals.h"
+ #include "DefaultMovementSet/Modes/FallingMode.h"
+ #include "DefaultMovementSet/Modes/FlyingMode.h"
+ #include "DefaultMovementSet/Modes/WalkingMode.h"
+@@ -42,6 +45,49 @@
+ 	OnHandlerSettingChanged();
+ 
+ 	OnPostFinalize.AddDynamic(this, &UCharacterMoverComponent::OnMoverPostFinalize);
++}
++
++bool UCharacterMoverComponent::ReconcileOffsetRootOnStop(FVector AnimatedRootWorldLocation,
++	float CurveValue, bool bRootIsAccumulating, float CorrectionSpeed, float StopSpeed,
++	float Tolerance, float MaxOffset)
++{
++	if (!ensure(IsInGameThread()) || !bRootIsAccumulating || !FMath::IsFinite(CurveValue) ||
++		CurveValue <= 0.f || AnimatedRootWorldLocation.ContainsNaN() || !IsOnGround() ||
++		LastOffsetRootCorrectionFrame == GFrameCounter || !GetWorld() ||
++		!FMath::IsFinite(CorrectionSpeed) || !FMath::IsFinite(StopSpeed) ||
++		!FMath::IsFinite(Tolerance) || !FMath::IsFinite(MaxOffset) ||
++		CorrectionSpeed <= 0.f || StopSpeed < 0.f || Tolerance < 0.f || MaxOffset <= Tolerance)
++	{
++		return false;
++	}
++
++	const FVector Up = GetUpDirection().GetSafeNormal();
++	if (Up.IsNearlyZero() || FVector::VectorPlaneProject(GetVelocity(), Up).SizeSquared() > FMath::Square(StopSpeed))
++	{
++		return false;
++	}
++	const FVector Offset = FVector::VectorPlaneProject(
++		AnimatedRootWorldLocation - GetUpdatedComponentTransform().GetLocation(), Up);
++	if (Offset.SizeSquared() <= FMath::Square(Tolerance) || Offset.SizeSquared() > FMath::Square(MaxOffset))
++	{
++		return false;
++	}
++
++	// Capture a render-frame budget, so resimulation reuses the same bounded request.
++	const float FrameSeconds = FMath::Clamp(GetWorld()->GetDeltaSeconds(), 0.f, 0.05f);
++	if (FrameSeconds <= UE_SMALL_NUMBER)
++	{
++		return false;
++	}
++	TSharedPtr<FOffsetRootReconcileEffect> Effect = MakeShared<FOffsetRootReconcileEffect>();
++	Effect->TargetRootWorldLocation = AnimatedRootWorldLocation;
++	Effect->MaxStepDistance = FMath::Min(CorrectionSpeed * FrameSeconds, MaxOffset);
++	Effect->StopSpeed = StopSpeed;
++	Effect->Tolerance = Tolerance;
++	Effect->MaxOffset = MaxOffset;
++	QueueInstantMovementEffect(Effect);
++	LastOffsetRootCorrectionFrame = GFrameCounter;
++	return true;
+ }
+ 
+ bool UCharacterMoverComponent::GetHandleJump() const
+--- /dev/null
++++ b/Private/DefaultMovementSet/InstantMovementEffects/OffsetRootReconcileEffect.cpp
+@@ -0,0 +1,156 @@
++// Project extension to UE 5.8 Mover.
++#include "DefaultMovementSet/InstantMovementEffects/OffsetRootReconcileEffect.h"
++
++#include "Components/SceneComponent.h"
++#include "Engine/ScopedMovementUpdate.h"
++#include "MoverComponent.h"
++#include "MoverDataModelTypes.h"
++#include "MoverSimulationTypes.h"
++#include "MoveLibrary/MovementRecord.h"
++#include "DefaultMovementSet/Settings/CommonLegacyMovementSettings.h"
++#include "MoveLibrary/BasedMovementUtils.h"
++#include "MoveLibrary/FloorQueryUtils.h"
++#include "MoveLibrary/GroundMovementUtils.h"
++#include "MoveLibrary/MovementUtils.h"
++#include "MoveLibrary/MoverBlackboard.h"
++
++#include UE_INLINE_GENERATED_CPP_BY_NAME(OffsetRootReconcileEffect)
++
++bool FOffsetRootReconcileEffect::ApplyMovementEffect(FApplyMovementEffectParams& Params, FMoverSyncState& OutputState)
++{
++	USceneComponent* Component = Params.UpdatedComponent;
++	const UMoverComponent* Mover = Params.MoverComp;
++	FMoverDefaultSyncState* State = OutputState.SyncStateCollection.FindMutableDataByType<FMoverDefaultSyncState>();
++	if (!Component || !Params.UpdatedPrimitive || !Mover || !State || !Params.StartState || !Params.TimeStep ||
++		TargetRootWorldLocation.ContainsNaN() || !FMath::IsFinite(MaxStepDistance) ||
++		!FMath::IsFinite(StopSpeed) || !FMath::IsFinite(Tolerance) || !FMath::IsFinite(MaxOffset) ||
++		MaxStepDistance <= 0.f || StopSpeed < 0.f || Tolerance < 0.f || MaxOffset <= Tolerance ||
++		!Mover->HasGameplayTagInState(OutputState, Mover_IsOnGround, false))
++	{
++		return false;
++	}
++
++	const FVector Up = Mover->GetUpDirection().GetSafeNormal();
++	const FVector Velocity = State->GetVelocity_WorldSpace();
++	const FVector AngularVelocity = State->GetAngularVelocityDegrees_WorldSpace();
++	if (Up.IsNearlyZero() || FVector::VectorPlaneProject(Velocity, Up).SizeSquared() > FMath::Square(StopSpeed))
++	{
++		return false;
++	}
++	// A request captured last frame must never hold back newly requested movement/jumping.
++	if (const FCharacterDefaultInputs* Inputs = Params.StartState->InputCmd.InputCollection.FindDataByType<FCharacterDefaultInputs>())
++	{
++		if (Inputs->bIsJumpJustPressed || !Inputs->GetMoveInput().IsNearlyZero())
++		{
++			return false;
++		}
++	}
++	const FVector OriginalLocation = Component->GetComponentLocation();
++	const FVector Offset = FVector::VectorPlaneProject(TargetRootWorldLocation - OriginalLocation, Up);
++	if (Offset.SizeSquared() <= FMath::Square(Tolerance) || Offset.SizeSquared() > FMath::Square(MaxOffset))
++	{
++		return false;
++	}
++	const UCommonLegacyMovementSettings* Settings = Mover->FindSharedSettings<UCommonLegacyMovementSettings>();
++	UMoverBlackboard* Blackboard = Mover->GetSimBlackboard_Mutable();
++	if (!Settings || !Blackboard)
++	{
++		return false;
++	}
++	FMovingComponentSet MovingComps(const_cast<UMoverComponent*>(Mover));
++	FFloorCheckSettings FloorSettings;
++	FloorSettings.FloorSweepDistance = Settings->FloorSweepDistance;
++	FloorSettings.MaxWalkSlopeCosine = Settings->MaxWalkSlopeCosine;
++	FloorSettings.bUseFlatBaseForFloorChecks = Settings->bUseFlatBaseForFloorChecks;
++	FloorSettings.PerchRadiusThreshold = Settings->PerchRadiusThreshold;
++	FFloorCheckResult Floor;
++	if (!Blackboard->TryGet(CommonBlackboard::LastFloorResult, Floor))
++	{
++		UFloorQueryUtils::FindFloor(MovingComps, FloorSettings, OriginalLocation, Floor);
++	}
++	if (!Floor.IsWalkableFloor() || Floor.HitResult.bStartPenetrating)
++	{
++		return false;
++	}
++
++	const FVector PlanarStep = Offset.GetClampedToMaxSize(MaxStepDistance);
++	const FVector RampStep = UGroundMovementUtils::ComputeDeflectedMoveOntoRamp(
++		PlanarStep, Up, Floor.HitResult, Settings->MaxWalkSlopeCosine, Floor.bLineTrace);
++	const FQuat Rotation = Component->GetComponentQuat();
++	FScopedMovementUpdate ScopedCorrection(Component, EScopedUpdate::DeferredUpdates);
++	// Deliberately separate from walking's movement record: never generate locomotion velocity.
++	FMovementRecord CorrectionRecord;
++	CorrectionRecord.SetDeltaSeconds(FMath::Max(Params.TimeStep->StepMs * 0.001f, UE_SMALL_NUMBER));
++	FHitResult Hit(1.f);
++	UMovementUtils::TrySafeMoveUpdatedComponent(MovingComps, RampStep, Rotation, true,
++		Hit, ETeleportType::None, CorrectionRecord);
++	if (Hit.bStartPenetrating)
++	{
++		ScopedCorrection.RevertMove();
++		return false;
++	}
++	if (Hit.IsValidBlockingHit() && Hit.Time > 0.f &&
++		UFloorQueryUtils::IsHitSurfaceWalkable(Hit, Up, Settings->MaxWalkSlopeCosine))
++	{
++		// Continue only over a walkable ramp; walls stop the correction without sliding.
++		const FVector Remainder = UGroundMovementUtils::ComputeDeflectedMoveOntoRamp(
++			PlanarStep * (1.f - Hit.Time), Up, Hit, Settings->MaxWalkSlopeCosine, false);
++		UMovementUtils::TrySafeMoveUpdatedComponent(MovingComps, Remainder, Rotation, true,
++			Hit, ETeleportType::None, CorrectionRecord);
++	}
++	if (Hit.bStartPenetrating || FVector::DotProduct(Component->GetComponentLocation() - OriginalLocation, PlanarStep) <= UE_SMALL_NUMBER)
++	{
++		ScopedCorrection.RevertMove();
++		return false;
++	}
++	UFloorQueryUtils::FindFloor(MovingComps, FloorSettings, Component->GetComponentLocation(), Floor);
++	if (!Floor.IsWalkableFloor() || Floor.HitResult.bStartPenetrating)
++	{
++		// Reconciliation must not pull an idle pawn off a ledge or onto an unwalkable slope.
++		ScopedCorrection.RevertMove();
++		return false;
++	}
++	UGroundMovementUtils::TryMoveToAdjustHeightAboveFloor(MovingComps, Floor,
++		Settings->MaxWalkSlopeCosine, CorrectionRecord);
++
++	FRelativeBaseInfo BaseInfo;
++	if (UBasedMovementUtils::IsADynamicBase(Floor.HitResult.GetComponent()))
++	{
++		BaseInfo.SetFromFloorResult(Floor, Component->GetComponentLocation(), Up);
++		Blackboard->Set(CommonBlackboard::LastFoundDynamicMovementBase, BaseInfo);
++	}
++	else
++	{
++		Blackboard->Invalidate(CommonBlackboard::LastFoundDynamicMovementBase);
++	}
++	Blackboard->Set(CommonBlackboard::LastFloorResult, Floor);
++	State->SetTransforms_WorldSpace(Component->GetComponentLocation(), Component->GetComponentRotation(),
++		Velocity, AngularVelocity, BaseInfo.MovementBase.Get(), BaseInfo.BoneName);
++	Component->ComponentVelocity = Velocity;
++	return true;
++}
++
++FInstantMovementEffect* FOffsetRootReconcileEffect::Clone() const
++{
++	return new FOffsetRootReconcileEffect(*this);
++}
++
++void FOffsetRootReconcileEffect::NetSerialize(FArchive& Ar)
++{
++	Super::NetSerialize(Ar);
++	Ar << TargetRootWorldLocation;
++	Ar << MaxStepDistance;
++	Ar << StopSpeed;
++	Ar << Tolerance;
++	Ar << MaxOffset;
++}
++
++UScriptStruct* FOffsetRootReconcileEffect::GetScriptStruct() const
++{
++	return StaticStruct();
++}
++
++FString FOffsetRootReconcileEffect::ToSimpleString() const
++{
++	return TEXT("Swept offset-root position reconciliation");
++}
+--- a/Public/DefaultMovementSet/CharacterMoverComponent.h
++++ b/Public/DefaultMovementSet/CharacterMoverComponent.h
+@@ -33,6 +33,17 @@
+ 	UE_API UCharacterMoverComponent();
+ 	
+ 	UE_API virtual void BeginPlay() override;
++
++	/** Game-thread bridge from the ABP's cached world-space offset root. Call once per frame.
++	 * Queues a bounded swept position correction only while grounded and stopped.
++	 * bRootIsAccumulating must describe the evaluated node's Accumulate translation mode.
++	 * This does not apply root-motion velocity, change facing, or teleport the actor.
++	 * Returns whether a correction was queued, not whether collision allowed it.
++	 */
++	UFUNCTION(BlueprintCallable, Category="Mover|Offset Root", meta=(AdvancedDisplay="CorrectionSpeed,StopSpeed,Tolerance,MaxOffset"))
++	UE_API bool ReconcileOffsetRootOnStop(FVector AnimatedRootWorldLocation, float CurveValue,
++		bool bRootIsAccumulating, float CorrectionSpeed = 150.f, float StopSpeed = 5.f,
++		float Tolerance = 1.f, float MaxOffset = 200.f);
+ 
+ 
+ 	// Returns whether this component is tasked with handling jump input or not
+@@ -136,6 +147,9 @@
+ 	FMover_OnStanceChanged OnStanceChanged;
+ 	
+ protected:
++	// Multiple post-finalize callbacks must not multiply the correction's frame budget.
++	uint64 LastOffsetRootCorrectionFrame = MAX_uint64;
++
+ 	UFUNCTION()
+ 	UE_API virtual void OnMoverPreSimulationTick(const FMoverTimeStep& TimeStep, const FMoverInputCmdContext& InputCmd);
+ 
+--- /dev/null
++++ b/Public/DefaultMovementSet/InstantMovementEffects/OffsetRootReconcileEffect.h
+@@ -0,0 +1,32 @@
++// Project extension to UE 5.8 Mover.
++#pragma once
++
++#include "InstantMovementEffect.h"
++#include "OffsetRootReconcileEffect.generated.h"
++
++/** Position-only reconciliation of a stopped capsule toward its accumulated animated root.
++ * Scheduled by CharacterMover on the game thread and replayed as part of Mover simulation.
++ * The correction has no linear/angular velocity contribution and emits no teleport event.
++ */
++USTRUCT()
++struct MOVER_API FOffsetRootReconcileEffect : public FInstantMovementEffect
++{
++	GENERATED_BODY()
++
++	UPROPERTY()
++	FVector TargetRootWorldLocation = FVector::ZeroVector;
++	UPROPERTY()
++	float MaxStepDistance = 0.f;
++	UPROPERTY()
++	float StopSpeed = 5.f;
++	UPROPERTY()
++	float Tolerance = 1.f;
++	UPROPERTY()
++	float MaxOffset = 200.f;
++
++	virtual bool ApplyMovementEffect(FApplyMovementEffectParams& Params, FMoverSyncState& OutputState) override;
++	virtual FInstantMovementEffect* Clone() const override;
++	virtual void NetSerialize(FArchive& Ar) override;
++	virtual UScriptStruct* GetScriptStruct() const override;
++	virtual FString ToSimpleString() const override;
++};

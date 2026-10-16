@@ -1,0 +1,157 @@
+--- a/Private/DefaultMovementSet/CharacterMoverComponent.cpp
++++ b/Private/DefaultMovementSet/CharacterMoverComponent.cpp
+@@ -51,8 +51,8 @@
+ 	float CurveValue, bool bRootIsAccumulating, float CorrectionSpeed, float StopSpeed,
+ 	float Tolerance, float MaxOffset)
+ {
+-	if (!ensure(IsInGameThread()) || !bRootIsAccumulating || !FMath::IsFinite(CurveValue) ||
+-		CurveValue <= 0.f || AnimatedRootWorldLocation.ContainsNaN() || !IsOnGround() ||
++	if (!ensure(IsInGameThread()) || !FMath::IsFinite(CurveValue) ||
++		AnimatedRootWorldLocation.ContainsNaN() ||
+ 		LastOffsetRootCorrectionFrame == GFrameCounter || !GetWorld() ||
+ 		!FMath::IsFinite(CorrectionSpeed) || !FMath::IsFinite(StopSpeed) ||
+ 		!FMath::IsFinite(Tolerance) || !FMath::IsFinite(MaxOffset) ||
+@@ -60,33 +60,87 @@
+ 	{
+ 		return false;
+ 	}
+-
+-	const FVector Up = GetUpDirection().GetSafeNormal();
+-	if (Up.IsNearlyZero() || FVector::VectorPlaneProject(GetVelocity(), Up).SizeSquared() > FMath::Square(StopSpeed))
+-	{
+-		return false;
+-	}
+-	const FVector Offset = FVector::VectorPlaneProject(
+-		AnimatedRootWorldLocation - GetUpdatedComponentTransform().GetLocation(), Up);
+-	if (Offset.SizeSquared() <= FMath::Square(Tolerance) || Offset.SizeSquared() > FMath::Square(MaxOffset))
+-	{
+-		return false;
+-	}
+-
+-	// Capture a render-frame budget, so resimulation reuses the same bounded request.
++	LastOffsetRootCorrectionFrame = GFrameCounter;
+ 	const float FrameSeconds = FMath::Clamp(GetWorld()->GetDeltaSeconds(), 0.f, 0.05f);
+ 	if (FrameSeconds <= UE_SMALL_NUMBER)
+ 	{
+ 		return false;
+ 	}
++	CurveValue = FMath::Max(0.f, CurveValue);
++	auto ReleaseRadius = [&]()
++	{
++		// Smoothly follow a disappearing curve limit after completion or blockage.
++		if (OffsetRootReconciliationRadiusHold > 0.f)
++		{
++			OffsetRootReconciliationRadiusHold = FMath::Max(CurveValue,
++				OffsetRootReconciliationRadiusHold - CorrectionSpeed * FrameSeconds);
++		}
++	};
++	const FVector Up = GetUpDirection().GetSafeNormal();
++	if (!bRootIsAccumulating || !IsOnGround() || Up.IsNearlyZero() ||
++		FVector::VectorPlaneProject(GetVelocity(), Up).SizeSquared() > FMath::Square(StopSpeed))
++	{
++		bOffsetRootReconciliationActive = false;
++		bOffsetRootReconciliationBlocked = false;
++		OffsetRootReconciliationStalledSeconds = 0.f;
++		ReleaseRadius();
++		return false;
++	}
++	if (bOffsetRootReconciliationBlocked)
++	{
++		// Rearm after this held animation window ends or new locomotion begins.
++		if (CurveValue <= 0.f) { bOffsetRootReconciliationBlocked = false; }
++		ReleaseRadius();
++		return false;
++	}
++	const FVector Position = GetUpdatedComponentTransform().GetLocation();
++	if (!bOffsetRootReconciliationActive && CurveValue <= 0.f)
++	{
++		ReleaseRadius();
++		return false;
++	}
++	// Freeze the latest animated target on blend-out. Do not chase a shrinking clamp.
++	if (!bOffsetRootReconciliationActive || CurveValue > 0.f)
++	{
++		OffsetRootReconciliationTarget = AnimatedRootWorldLocation;
++	}
++	const FVector Offset = FVector::VectorPlaneProject(OffsetRootReconciliationTarget - Position, Up);
++	if (Offset.SizeSquared() <= FMath::Square(Tolerance) || Offset.SizeSquared() > FMath::Square(MaxOffset))
++	{
++		bOffsetRootReconciliationActive = false;
++		OffsetRootReconciliationStalledSeconds = 0.f;
++		ReleaseRadius();
++		return false;
++	}
++	if (bOffsetRootReconciliationActive)
++	{
++		const FVector Progress = FVector::VectorPlaneProject(Position - OffsetRootReconciliationLastPosition, Up);
++		OffsetRootReconciliationStalledSeconds = Progress.SizeSquared() > FMath::Square(0.05f)
++			? 0.f : OffsetRootReconciliationStalledSeconds + FrameSeconds;
++		if (OffsetRootReconciliationStalledSeconds >= 0.25f)
++		{
++			bOffsetRootReconciliationActive = false;
++			bOffsetRootReconciliationBlocked = true;
++			ReleaseRadius();
++			return false;
++		}
++	}
++	else
++	{
++		bOffsetRootReconciliationActive = true;
++		OffsetRootReconciliationStalledSeconds = 0.f;
++	}
++	OffsetRootReconciliationLastPosition = Position;
++	OffsetRootReconciliationRadiusHold = FMath::Max(OffsetRootReconciliationRadiusHold,
++		FMath::Max(CurveValue, static_cast<float>(Offset.Size())));
++	// Keep the correction's position budget separate from simulation velocity.
+ 	TSharedPtr<FOffsetRootReconcileEffect> Effect = MakeShared<FOffsetRootReconcileEffect>();
+-	Effect->TargetRootWorldLocation = AnimatedRootWorldLocation;
++	Effect->TargetRootWorldLocation = OffsetRootReconciliationTarget;
+ 	Effect->MaxStepDistance = FMath::Min(CorrectionSpeed * FrameSeconds, MaxOffset);
+ 	Effect->StopSpeed = StopSpeed;
+ 	Effect->Tolerance = Tolerance;
+ 	Effect->MaxOffset = MaxOffset;
+ 	QueueInstantMovementEffect(Effect);
+-	LastOffsetRootCorrectionFrame = GFrameCounter;
+ 	return true;
+ }
+ 
+--- a/Public/DefaultMovementSet/CharacterMoverComponent.h
++++ b/Public/DefaultMovementSet/CharacterMoverComponent.h
+@@ -37,6 +37,8 @@
+ 	/** Game-thread bridge from the ABP's cached world-space offset root. Call once per frame.
+ 	 * Queues a bounded swept position correction only while grounded and stopped.
+ 	 * bRootIsAccumulating must describe the evaluated node's Accumulate translation mode.
++	 * CurveValue is the curve-backed radius including its blend-out hold. It starts
++	 * correction; an in-progress correction may finish after this value reaches zero.
+ 	 * This does not apply root-motion velocity, change facing, or teleport the actor.
+ 	 * Returns whether a correction was queued, not whether collision allowed it.
+ 	 */
+@@ -45,6 +47,12 @@
+ 		bool bRootIsAccumulating, float CorrectionSpeed = 150.f, float StopSpeed = 5.f,
+ 		float Tolerance = 1.f, float MaxOffset = 200.f);
+ 
++	/** Copy on game-thread PostEvaluateAnimation to an ABP float. Thread-safe radius
++	 * evaluation reads that float and uses max(curve radius, copied hold).
++	 */
++	UFUNCTION(BlueprintPure, Category="Mover|Offset Root")
++	float GetOffsetRootReconciliationRadiusHold() const { return OffsetRootReconciliationRadiusHold; }
++
+ 
+ 	// Returns whether this component is tasked with handling jump input or not
+ 	UFUNCTION(BlueprintGetter)
+@@ -147,8 +155,14 @@
+ 	FMover_OnStanceChanged OnStanceChanged;
+ 	
+ protected:
+-	// Multiple post-finalize callbacks must not multiply the correction's frame budget.
++	// Multiple post-evaluation callbacks must not multiply timers or the frame budget.
+ 	uint64 LastOffsetRootCorrectionFrame = MAX_uint64;
++	FVector OffsetRootReconciliationTarget = FVector::ZeroVector;
++	FVector OffsetRootReconciliationLastPosition = FVector::ZeroVector;
++	float OffsetRootReconciliationRadiusHold = 0.f;
++	float OffsetRootReconciliationStalledSeconds = 0.f;
++	bool bOffsetRootReconciliationActive = false;
++	bool bOffsetRootReconciliationBlocked = false;
+ 
+ 	UFUNCTION()
+ 	UE_API virtual void OnMoverPreSimulationTick(const FMoverTimeStep& TimeStep, const FMoverInputCmdContext& InputCmd);
