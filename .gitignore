@@ -92,6 +92,9 @@ Engine/Programs/UnrealBuildTool/*
 ###################
 # Project Assets  #
 ###################
+# Local project tools
+/Tools/
+
 # Ignore Audio
 **/Content/Audio/
 **/Audio/

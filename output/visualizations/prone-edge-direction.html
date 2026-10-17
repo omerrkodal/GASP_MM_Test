@@ -1,0 +1,172 @@
+<div id="prone-edge-direction">
+  <style>
+    #prone-edge-direction { color: var(--foreground); }
+    #prone-edge-direction .edge-scene { width: 100%; display: block; overflow: visible; }
+    #prone-edge-direction .edge-scene text { fill: var(--foreground); font: inherit; }
+    #prone-edge-direction .edge-scene .secondary-label { fill: var(--muted-foreground); }
+    #prone-edge-direction .edge-legend { margin-top: 12px; }
+    #prone-edge-direction .edge-hit { color: var(--viz-series-1); }
+    #prone-edge-direction .edge-miss { color: var(--viz-series-2); }
+    #prone-edge-direction .edge-boundary { color: var(--viz-series-3); }
+    #prone-edge-direction .edge-subtitle { margin: 12px 0 4px; }
+  </style>
+  <h3>Finding the edge direction</h3>
+  <div class="viz-controls" aria-label="Detection steps">
+    <button class="btn" type="button" data-step="0" aria-pressed="true">1 · Probe</button>
+    <button class="btn" type="button" data-step="1" aria-pressed="false">2 · Refine</button>
+    <button class="btn" type="button" data-step="2" aria-pressed="false">3 · Direction</button>
+    <button class="btn" type="button" data-step="3" aria-pressed="false">4 · Slide</button>
+  </div>
+  <div class="text-small text-muted edge-subtitle" aria-live="polite" data-status>Top view · dots are downward ground checks</div>
+  <svg class="edge-scene" role="img" aria-label="Two parallel probe paths cross a ledge. Hit and miss samples narrow the boundary to two points, A and B. Their connecting line gives the direction along the edge."></svg>
+  <div class="viz-row edge-legend text-small" aria-label="Legend">
+    <span><span class="edge-hit" aria-hidden="true">●</span> Ground hit</span>
+    <span><span class="edge-miss" aria-hidden="true">×</span> No ground</span>
+    <span><span class="edge-boundary" aria-hidden="true">◆</span> Boundary A / B</span>
+  </div>
+  <script>
+    (() => {
+      const root = document.getElementById('prone-edge-direction');
+      const svg = root.querySelector('.edge-scene');
+      const status = root.querySelector('[data-status]');
+      const controls = Array.from(root.querySelectorAll('button[data-step]'));
+      const ns = 'http://www.w3.org/2000/svg';
+      const validStep = value => Number.isInteger(value) && value >= 0 && value <= 3;
+      const initial = window.openai?.widgetState;
+      let step = validStep(initial?.modelContent?.step) ? initial.modelContent.step : 0;
+      const color = { hit: 'var(--viz-series-1)', miss: 'var(--viz-series-2)', edge: 'var(--viz-series-3)', wanted: 'var(--viz-series-4)', ink: 'var(--foreground)', muted: 'var(--muted-foreground)', border: 'var(--border)', ground: 'var(--muted)' };
+      const add = (tag, attrs, parent = svg, content) => {
+        const el = document.createElementNS(ns, tag);
+        Object.entries(attrs || {}).forEach(([key, value]) => el.setAttribute(key, value));
+        if (content !== undefined) el.textContent = content;
+        parent.appendChild(el);
+        return el;
+      };
+      const plus = (a,b) => ({x:a.x+b.x,y:a.y+b.y});
+      const times = (a,s) => ({x:a.x*s,y:a.y*s});
+      const line = (a,b,attrs={}) => add('line',{x1:a.x,y1:a.y,x2:b.x,y2:b.y,...attrs});
+      const label = (x,y,text,anchor='start',secondary=false) => add('text',{x,y,'text-anchor':anchor,class:secondary?'secondary-label':''},svg,text);
+      const arrow = (a,b,kind,dashed=false) => {
+        if (Math.hypot(b.x-a.x,b.y-a.y)<1) return;
+        return line(a,b,{stroke:color[kind],'stroke-width':3,'marker-end':`url(#ped-arrow-${kind})`,...(dashed?{'stroke-dasharray':'6 5'}:{})});
+      };
+      const sample = (p,hit,parent=svg,extra={}) => {
+        const mark = hit
+          ? add('circle',{cx:p.x,cy:p.y,r:5,fill:color.hit,...extra},parent)
+          : add('path',{d:`M${p.x-5},${p.y-5} L${p.x+5},${p.y+5} M${p.x-5},${p.y+5} L${p.x+5},${p.y-5}`,stroke:color.miss,'stroke-width':2.5,fill:'none',...extra},parent);
+        add('title',{},mark,hit?'Ground trace: hit':'Ground trace: no ground');
+      };
+      function draw() {
+        const width = Math.max(280,Math.round(root.getBoundingClientRect().width));
+        const height = width > 560 ? 470 : 430;
+        svg.setAttribute('viewBox',`0 0 ${width} ${height}`);
+        svg.setAttribute('height',height);
+        svg.replaceChildren();
+        add('title',{},svg,'Top view: detecting the direction of a ledge');
+        add('desc',{},svg,'Each marker is a downward trace. Two offset paths start on supported ground and end beyond a ledge. Repeated midpoint checks locate two boundary points, A and B. Connecting A and B gives a local tangent. Movement is projected along that tangent and checked again for support.');
+        const defs = add('defs',{});
+        ['hit','miss','edge','wanted','ink'].forEach(kind => {
+          const marker=add('marker',{id:`ped-arrow-${kind}`,viewBox:'0 0 10 10',refX:8,refY:5,markerWidth:7,markerHeight:7,orient:'auto-start-reverse',markerUnits:'userSpaceOnUse'},defs);
+          add('path',{d:'M1,1 L9,5 L1,9 Z',fill:color[kind]},marker);
+        });
+        const k=.25, edgeX=.52*width, midY=.5*height;
+        const xAt = y => edgeX+k*(y-midY);
+        const isHit = p => p.x<xAt(p.y);
+        add('rect',{x:0,y:0,width,height,fill:color.ground,opacity:.4});
+        add('path',{d:`M0,0 L${xAt(0)},0 L${xAt(height)},${height} L0,${height} Z`,fill:color.hit,opacity:.075});
+        line({x:xAt(0),y:0},{x:xAt(height),y:height},{stroke:color.border,'stroke-width':1.5});
+        label(18,32,'GROUND');
+        label(width-18,32,'DROP / NO GROUND','end');
+        const P={x:.24*width,y:.7*height};
+        const direction={x:.78,y:-Math.sqrt(1-.78*.78)};
+        const side={x:-direction.y,y:direction.x};
+        const laneOffset=Math.min(36,.085*width), lookAhead=.57*width;
+        const paths=[-1,1].map(sign=>{
+          const start=plus(P,times(side,sign*laneOffset));
+          const end=plus(start,times(direction,lookAhead));
+          let lo=start,hi=end;
+          const tests=[];
+          for(let n=0;n<9;n++){
+            const probe=times(plus(lo,hi),.5),hit=isHit(probe);
+            tests.push({point:probe,hit});
+            if(hit)lo=probe;else hi=probe;
+          }
+          return {start,end,tests,lo,hi,boundary:times(plus(lo,hi),.5)};
+        });
+        const probeGroup=add('g',{opacity:step>=2?.3:1});
+        paths.forEach((path,index)=>{
+          add('line',{x1:path.start.x,y1:path.start.y,x2:path.end.x,y2:path.end.y,stroke:color.muted,'stroke-width':1,'stroke-dasharray':'4 5'},probeGroup);
+          sample(path.start,true,probeGroup);
+          sample(path.end,false,probeGroup);
+          if(step===1){
+            path.tests.slice(0,4).forEach(test=>sample(test.point,test.hit,probeGroup));
+            add('line',{x1:path.tests[2].point.x,y1:path.tests[2].point.y,x2:path.tests[3].point.x,y2:path.tests[3].point.y,stroke:color.edge,'stroke-width':3,opacity:.45},probeGroup);
+          }
+          if(step<2){
+            const shift=index===0?-13:22;
+            label(path.start.x-9,path.start.y+shift,'Hit','end');
+            label(Math.min(width-10,path.end.x+10),path.end.y+shift,'Miss','start');
+          }
+        });
+        add('ellipse',{cx:P.x,cy:P.y,rx:12,ry:26,transform:`rotate(51.3 ${P.x} ${P.y})`,fill:color.ground,stroke:color.ink,'stroke-width':1.5});
+        label(P.x,P.y+57,'Character','middle');
+        if(step<2){
+          const smallEnd=plus(P,times(direction,Math.min(58,width*.16)));
+          arrow(P,smallEnd,'ink');
+        }
+        const A=paths[0].boundary,B=paths[1].boundary,Q=times(plus(A,B),.5);
+        if(step>=2){
+          const delta={x:B.x-A.x,y:B.y-A.y};
+          const len=Math.hypot(delta.x,delta.y);
+          const tangent=times(delta,1/len);
+          let normal={x:tangent.y,y:-tangent.x};
+          if(normal.x*direction.x+normal.y*direction.y<0)normal=times(normal,-1);
+          const extension=step===2?54:24;
+          line(plus(A,times(tangent,-extension)),plus(B,times(tangent,extension)),{stroke:color.edge,'stroke-width':2,'stroke-dasharray':'7 4'});
+          [A,B].forEach((p,i)=>{
+            add('path',{d:`M${p.x},${p.y-7} L${p.x+7},${p.y} L${p.x},${p.y+7} L${p.x-7},${p.y} Z`,fill:color.edge});
+            label(p.x-13,p.y+5,i===0?'A':'B','end');
+          });
+          if(step===2){
+            const normalEnd=plus(Q,times(normal,Math.min(112,width*.25)));
+            arrow(Q,normalEnd,'miss');
+            label(Math.min(width-14,normalEnd.x+5),normalEnd.y+26,'Outward normal','end');
+            const tangentEnd=plus(B,times(tangent,58));
+            arrow(A,tangentEnd,'edge');
+            label(tangentEnd.x-12,tangentEnd.y+19,'Edge direction','end');
+          }else{
+            const magnitude=Math.min(144,.27*width);
+            const requested=times(direction,magnitude);
+            const outward=Math.max(0,requested.x*normal.x+requested.y*normal.y);
+            const safe={x:requested.x-normal.x*outward,y:requested.y-normal.y*outward};
+            const D=plus(Q,requested),S=plus(Q,safe);
+            arrow(Q,D,'wanted',true);
+            arrow(Q,S,'hit');
+            arrow(S,D,'miss',true);
+            label(Math.min(width-12,D.x+7),D.y-15,'Requested','end');
+            label(S.x-9,S.y-12,'Along edge','end');
+            const center=times(plus(S,D),.5);
+            label(Math.min(width-12,center.x+18),center.y+30,'Removed','middle');
+          }
+        }
+        controls.forEach(button=>button.setAttribute('aria-pressed',String(Number(button.dataset.step)===step)));
+        status.textContent=[
+          'Top view · two nearby paths, each with a hit and a miss',
+          'Top view · repeated midpoint ground checks',
+          'Top view · A–B gives the local edge direction',
+          'Top view · keep movement along the edge; remove the outward part'
+        ][step];
+      }
+      controls.forEach(button=>button.addEventListener('click',()=>{
+        step=Number(button.dataset.step);draw();
+        window.openai?.setWidgetState?.({modelContent:{step,topic:'Prone edge direction from two hit-to-miss boundary searches'},privateContent:null})?.catch(()=>{});
+      }));
+      window.addEventListener('openai:set_globals',event=>{
+        const value=event.detail?.globals?.widgetState?.modelContent?.step;
+        if(validStep(value)){step=value;draw();}
+      });
+      new ResizeObserver(draw).observe(root);
+      draw();
+    })();
+  </script>
+</div>
