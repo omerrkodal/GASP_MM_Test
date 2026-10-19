@@ -4,7 +4,7 @@
 
 The source is installed in the **global Mover plugin** at `C:/Program Files/Epic Games/UE_5.8/Engine/Plugins/Experimental/Mover`.
 
-Close Unreal and run `Tools/RebuildGlobalMover.cmd` as administrator from File Explorer. Reopen the project after **BUILD SUCCEEDED**. The terminal embedded in Unreal closes with the editor, so the native build must run externally.
+Close Unreal and run `ProjectResources/Tools/RebuildGlobalMover.cmd` as administrator from File Explorer. Reopen the project after **BUILD SUCCEEDED**. The terminal embedded in Unreal closes with the editor, so the native build must run externally.
 
 `Get Prone Floor Data` is a **pure C++ Blueprint node on CharacterMoverComponent**, under `Mover | Prone`. It reads cached simulation results and performs no traces. The user will wire it into `Update_FloorValues` and the Control Rig.
 
@@ -60,19 +60,19 @@ Each trace has a Tip/Back/Center label and result. Drawings last one frame and u
 
 The independent capsule visualization remains `mover.debug.DrawProneCapsule 1`.
 
-The incremental source patch is `Tools/Patches/MoverProneFloorTraceDebug-UE5.8.patch`, applied after the 2026-10-15 prone component/physics dimension settings change. Backups, staged source, installed-file hashes, and prior successful build evidence are in `Saved/VibeUE/ProneFloorTraceDebug-20261015`. The debug revision built successfully at 13:07:43 UTC on 2026-10-15 (`EditorBuild-20261015-155643.log`), confirmed by WorkflowService as succeeded and not stale before the start-height change. Gameplay visual confirmation remains separate.
+The incremental source patch is `ProjectResources/Tools/Patches/MoverProneFloorTraceDebug-UE5.8.patch`, applied after the 2026-10-15 prone component/physics dimension settings change. Backups, staged source, installed-file hashes, and prior successful build evidence are in `Saved/VibeUE/ProneFloorTraceDebug-20261015`. The debug revision built successfully at 13:07:43 UTC on 2026-10-15 (`EditorBuild-20261015-155643.log`), confirmed by WorkflowService as succeeded and not stale before the start-height change. Gameplay visual confirmation remains separate.
 
 ### Center-height trace starts (2026-10-15)
 
 The center-height version started all three probes on a flat capsule-center plane plus the configurable upward offset. It built successfully at 13:19:53 UTC on 2026-10-15, confirmed by WorkflowService as succeeded and not stale before the physics-anchor revision. The user then reported problems on angled surfaces. That flat-plane version is superseded below.
 
-The incremental patch is `Tools/Patches/MoverProneProbeStartHeight-UE5.8.patch`, applied after the debug patch. Backups of `StanceSettings.h` and `ProneCapsuleUtils.cpp`, staged source, installed hashes, and previous successful build evidence are in `Saved/VibeUE/ProneProbeStartHeight-20261015`. No Blueprint settings or graphs were edited.
+The incremental patch is `ProjectResources/Tools/Patches/MoverProneProbeStartHeight-UE5.8.patch`, applied after the debug patch. Backups of `StanceSettings.h` and `ProneCapsuleUtils.cpp`, staged source, installed hashes, and previous successful build evidence are in `Saved/VibeUE/ProneProbeStartHeight-20261015`. No Blueprint settings or graphs were edited.
 
 ### Live physics capsule probe anchors (2026-10-15)
 
 The newest source uses the actual physics capsule center, axis, end-cap positions, and radius as described in Sampling above. It retains independent Tip/Back/Center outputs, downward queries, existing alignment selection, and serialized fields. The debug command draws the exact new query endpoints. This revision requires an **external native rebuild** and has not been compiled or gameplay verified yet.
 
-The incremental patch is `Tools/Patches/MoverPronePhysicsProbeAnchors-UE5.8.patch`, applied after the center-height patch. Backups of `ProneCapsuleUtils.cpp`, its header, and `StanceSettings.h`, staged source, installed hashes, and previous successful build evidence are in `Saved/VibeUE/PronePhysicsProbeAnchors-20261015`. No Blueprint settings or graphs were edited.
+The incremental patch is `ProjectResources/Tools/Patches/MoverPronePhysicsProbeAnchors-UE5.8.patch`, applied after the center-height patch. Backups of `ProneCapsuleUtils.cpp`, its header, and `StanceSettings.h`, staged source, installed hashes, and previous successful build evidence are in `Saved/VibeUE/PronePhysicsProbeAnchors-20261015`. No Blueprint settings or graphs were edited.
 
 ## Native files and rollback artifacts
 
@@ -83,7 +83,7 @@ Under `Source/Mover`:
 - `Public/MoveLibrary/ProneCapsuleUtils.h` and matching private `.cpp`: independent probes and desired normal selection.
 - `Public/DefaultMovementSet/MovementModifiers/StanceModifier.h` and matching private `.cpp`: sampling, copied state, and serialization.
 
-The incremental patch is `Tools/Patches/MoverProneFloorProbes-UE5.8.patch`; apply it after the horizontal implementation, slope alignment patch, and normal stability patch. Backups, staged source, installed-file hashes, and previous build evidence are in `Saved/VibeUE/ProneFloorProbes-20261011`. Preserve that folder before resetting or deleting Saved. The new header did not exist in the prior version; its Before backup is an empty marker.
+The incremental patch is `ProjectResources/Tools/Patches/MoverProneFloorProbes-UE5.8.patch`; apply it after the horizontal implementation, slope alignment patch, and normal stability patch. Backups, staged source, installed-file hashes, and previous build evidence are in `Saved/VibeUE/ProneFloorProbes-20261011`. Preserve that folder before resetting or deleting Saved. The new header did not exist in the prior version; its Before backup is an empty marker.
 
 ## Verification status
 
@@ -91,10 +91,10 @@ The native probe build succeeded at 18:44:55 UTC on 2026-10-11 (`EditorBuild-202
 
 The three-struct output API subsequently built successfully at 19:06:40 UTC (`EditorBuild-20261011-220606.log`), confirmed by WorkflowService with `isStale == false` before this single-result change. Its DLL SHA-256 was `b32cf389a90023b41b7edb80d3bd6c215216b0ffa2e809c9286cc523b98d6125`.
 
-The incremental output-API patch is `Tools/Patches/MoverProneFloorStructOutputs-UE5.8.patch`, applied after the probe patch. Backups of the three modified files, staged source, installed hashes, and successful prior build evidence are in `Saved/VibeUE/ProneFloorStructOutputs-20261011`. Sampling and stance serialization were not changed by this patch.
+The incremental output-API patch is `ProjectResources/Tools/Patches/MoverProneFloorStructOutputs-UE5.8.patch`, applied after the probe patch. Backups of the three modified files, staged source, installed hashes, and successful prior build evidence are in `Saved/VibeUE/ProneFloorStructOutputs-20261011`. Sampling and stance serialization were not changed by this patch.
 
-The **single-result** version subsequently built successfully at 19:20:52 UTC (`EditorBuild-20261011-222025.log`), confirmed by WorkflowService with `isStale == false` before restoring separate outputs. Its DLL SHA-256 was `3589bec8235a794f90f3f71736696c20eda1aa49686392055d6e12982881128e`. Its patch is `Tools/Patches/MoverProneSingleFloorResult-UE5.8.patch`, applied after the three-struct output patch, with backups in `Saved/VibeUE/ProneSingleFloorResult-20261011`. That historical version added the conditional center query and its serialized data.
+The **single-result** version subsequently built successfully at 19:20:52 UTC (`EditorBuild-20261011-222025.log`), confirmed by WorkflowService with `isStale == false` before restoring separate outputs. Its DLL SHA-256 was `3589bec8235a794f90f3f71736696c20eda1aa49686392055d6e12982881128e`. Its patch is `ProjectResources/Tools/Patches/MoverProneSingleFloorResult-UE5.8.patch`, applied after the three-struct output patch, with backups in `Saved/VibeUE/ProneSingleFloorResult-20261011`. That historical version added the conditional center query and its serialized data.
 
-The newest **Tip/Back/Center** source subsequently built successfully at **19:27:19 UTC on 2026-10-11** (`Saved/VibeUE/Builds/GlobalMover/EditorBuild-20261011-222652.log`). WorkflowService confirmed `lastBuild.status == "succeeded"` and `isStale == false` on 2026-10-12. Its DLL SHA-256 is `234060069ee4dd0c9a6892a2cee5b0ee7b5e6f3003cf33410fbdb2c2de600616`. Its incremental patch is `Tools/Patches/MoverProneTipBackCenter-UE5.8.patch`, applied after the single-result patch. Backups, staged source, installed hashes, and previous successful build evidence are in `Saved/VibeUE/ProneThreeFloorResults-20261011`. It samples center every grounded prone substep and restores separate outputs; the serialized field layout is unchanged from the single-result version. This confirms compilation, not gameplay or multiplayer behavior.
+The newest **Tip/Back/Center** source subsequently built successfully at **19:27:19 UTC on 2026-10-11** (`Saved/VibeUE/Builds/GlobalMover/EditorBuild-20261011-222652.log`). WorkflowService confirmed `lastBuild.status == "succeeded"` and `isStale == false` on 2026-10-12. Its DLL SHA-256 is `234060069ee4dd0c9a6892a2cee5b0ee7b5e6f3003cf33410fbdb2c2de600616`. Its incremental patch is `ProjectResources/Tools/Patches/MoverProneTipBackCenter-UE5.8.patch`, applied after the single-result patch. Backups, staged source, installed hashes, and previous successful build evidence are in `Saved/VibeUE/ProneThreeFloorResults-20261011`. It samples center every grounded prone substep and restores separate outputs; the serialized field layout is unchanged from the single-result version. This confirms compilation, not gameplay or multiplayer behavior.
 
 For the recommended low-cost Control Rig rotation, ground snapping, smoothing, and optional IK architecture, see [Prone Control Rig: surface alignment and ground contact](ProneControlRigGroundAlignment.md).

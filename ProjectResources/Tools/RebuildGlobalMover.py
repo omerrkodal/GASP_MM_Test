@@ -76,10 +76,13 @@ def find_project(value: str | None) -> Path:
         if project.suffix.lower() != ".uproject" or not project.is_file():
             raise RuntimeError(f"Project does not exist: {project}")
         return project
-    projects = list(Path(__file__).resolve().parent.parent.glob("*.uproject"))
-    if len(projects) != 1:
-        raise RuntimeError("Pass --project with the complete .uproject path.")
-    return projects[0]
+    for parent in Path(__file__).resolve().parents:
+        projects = list(parent.glob("*.uproject"))
+        if projects:
+            if len(projects) != 1:
+                raise RuntimeError("Pass --project with the complete .uproject path.")
+            return projects[0]
+    raise RuntimeError("Pass --project with the complete .uproject path.")
 
 
 def mover_binary(plugin: Path) -> Path:
@@ -176,7 +179,7 @@ def rebuild(args: argparse.Namespace) -> int:
         "status": "planning" if args.plan_only else "running", "startedAtUtc": utc_now(),
         "target": target, "platform": "Win64", "configuration": "Development",
         "projectPath": str(project), "enginePath": str(engine), "pluginPath": str(plugin),
-        "runner": "Tools/RebuildGlobalMover.py (standalone UBT; project-local Mover plugin)",
+        "runner": "ProjectResources/Tools/RebuildGlobalMover.py (standalone UBT; project-local Mover plugin)",
         "logPath": str(log), "arguments": build_args,
         "moverBinaryBefore": str(binary), "moverSha256Before": file_digest(binary),
         "newestMoverSourceTimestamp": newest_source,

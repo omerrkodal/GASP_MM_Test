@@ -10,4 +10,4 @@ This uses the last completed pose; it cannot predict animation that has not eval
 
 Source installation does not verify compilation. The user owns editor shutdown, external native recompilation and gameplay checks. After rebuilding, enable `mover.debug.DrawProneFloorTraces 1` and verify probes remain with the mesh during a translated/rotated reface while the capsule stays behind.
 
-Stage with `StageSource.py`, then install with `InstallSource.ps1`. The three original files and before/after hashes are recorded under `Saved/VibeUE/ProneMeshProbeAnchors`. The incremental patch is `Tools/Patches/MoverProneMeshProbeAnchors-UE5.8.patch`.
+Stage with `StageSource.py`, then install with `InstallSource.ps1`. The three original files and before/after hashes are recorded under `Saved/VibeUE/ProneMeshProbeAnchors`. The incremental patch is `ProjectResources/Tools/Patches/MoverProneMeshProbeAnchors-UE5.8.patch`.

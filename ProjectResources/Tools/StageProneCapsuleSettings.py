@@ -5,7 +5,7 @@ import difflib
 import hashlib
 import json
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path('C:/Program Files/Epic Games/UE_5.8/Engine/Plugins/Experimental/Mover/Source/Mover')
 OUT = ROOT / 'Saved/VibeUE/ProneCapsuleSettings-20261015'
 
@@ -144,7 +144,7 @@ def stage():
         manifest.append({'path':name, 'before_sha256':hashlib.sha256(before.encode()).hexdigest(),
                          'after_sha256':hashlib.sha256(after.encode()).hexdigest()})
     (OUT / 'manifest.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')
-    (ROOT / 'Tools/Patches/MoverProneCapsuleSettings-UE5.8.patch').write_text(''.join(patch), encoding='utf-8', newline='\n')
+    (ROOT / 'ProjectResources/Tools/Patches/MoverProneCapsuleSettings-UE5.8.patch').write_text(''.join(patch), encoding='utf-8', newline='\n')
     print('STAGED', len(changes), 'files in', OUT)
 
 

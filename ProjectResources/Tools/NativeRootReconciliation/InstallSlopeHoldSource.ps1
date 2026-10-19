@@ -1,6 +1,6 @@
 # Install reviewed source only. The user owns editor shutdown, rebuild and restart.
 $ErrorActionPreference = 'Stop'
-$projectRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+$projectRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
 $evidenceRoot = Join-Path $projectRoot 'Saved/VibeUE/NativeRootReconciliation/slope-hold-v2'
 $pythonPath = 'C:/Program Files/Epic Games/UE_5.8/Engine/Binaries/ThirdParty/Python3/Win64/python.exe'
 $state = 'failed'

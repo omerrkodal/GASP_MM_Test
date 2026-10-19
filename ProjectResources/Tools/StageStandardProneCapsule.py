@@ -10,7 +10,7 @@ import hashlib
 import json
 import re
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parents[2]
 SOURCE = Path('C:/Program Files/Epic Games/UE_5.8/Engine/Plugins/Experimental/Mover/Source/Mover')
 BASELINE = ROOT / 'Saved/VibeUE/HorizontalProne-20261011/Before'
 OUT = ROOT / 'Saved/VibeUE/StandardProneCapsule-20261015'
@@ -187,7 +187,7 @@ def stage():
     changes['Public/MoveLibrary/ProneCapsuleUtils.h'] = None
     changes['Private/MoveLibrary/ProneCapsuleUtils.cpp'] = None
     for name in ['Public/MoveLibrary/ProneFloorTraceUtils.h', 'Private/MoveLibrary/ProneFloorTraceUtils.cpp']:
-        changes[name] = (ROOT / 'Tools/StandardProneSource' / name).read_text(encoding='utf-8')
+        changes[name] = (ROOT / 'ProjectResources/Tools/StandardProneSource' / name).read_text(encoding='utf-8')
 
     patch = []
     manifest = []
@@ -211,7 +211,7 @@ def stage():
                                          tofile='b/Source/Mover/'+name))
         manifest.append(dict(path=name, before_sha256=digest(before), after_sha256=digest(new_bytes)))
     (OUT / 'manifest.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')
-    (ROOT / 'Tools/Patches/MoverStandardProneCapsule-UE5.8.patch').write_text(''.join(patch), encoding='utf-8', newline='\n')
+    (ROOT / 'ProjectResources/Tools/Patches/MoverStandardProneCapsule-UE5.8.patch').write_text(''.join(patch), encoding='utf-8', newline='\n')
     print('STAGED:', len(manifest), 'source files;', OUT)
 
 

@@ -13,7 +13,7 @@ The launcher uses Unreal's bundled Python; no Python packages are needed. You ca
 With an external terminal and Python 3:
 
 ```powershell
-python "F:\Unreal Projects\GASP_MM_Test\Tools\RebuildGlobalMover.py"
+python "F:\Unreal Projects\GASP_MM_Test\ProjectResources\Tools\RebuildGlobalMover.py"
 ```
 
 ## What gets built
@@ -48,7 +48,7 @@ The external slope build succeeded at 15:42:36 UTC (`EditorBuild-20261011-184209
 
 Backups, staged source, the installed-file hash report, and the additional `slope-prone.patch` are in `Saved/VibeUE/SlopeProne-20261011`. Preserve both this folder and the earlier `HorizontalProne-20261011` folder before resetting or deleting Saved. The slope patch applies on top of the horizontal implementation; the older horizontal staging script alone does not contain this update.
 
-A copy of the additional patch is tracked in Git at `Tools/Patches/MoverSlopeAlignment-UE5.8.patch`.
+A copy of the additional patch is tracked in Git at `ProjectResources/Tools/Patches/MoverSlopeAlignment-UE5.8.patch`.
 
 ### Ground-normal transition stability (2026-10-11): native build succeeded
 
@@ -58,7 +58,7 @@ The new global source keeps the accepted pose until a different normal stays wit
 
 The external stability rebuild succeeded at 18:12:58 UTC (`EditorBuild-20261011-211232.log`), confirmed by `WorkflowService.get_environment()` with `isStale == false`. The user subsequently reported continued switching between 5-degree and 10-degree slopes beneath the prone capsule. The debounce cannot remove feedback from selecting alignment using a sweep whose orientation itself changes with that alignment.
 
-Backups of the successfully built slope version, staged source, prior build evidence, and installed-file hashes are in `Saved/VibeUE/ProneSlopeStability-20261011`. The incremental patch is tracked at `Tools/Patches/MoverSlopeStability-UE5.8.patch`; apply it after the horizontal implementation and `MoverSlopeAlignment-UE5.8.patch` when restoring the changes. The older staging folders are historical snapshots and do not include this stability update.
+Backups of the successfully built slope version, staged source, prior build evidence, and installed-file hashes are in `Saved/VibeUE/ProneSlopeStability-20261011`. The incremental patch is tracked at `ProjectResources/Tools/Patches/MoverSlopeStability-UE5.8.patch`; apply it after the horizontal implementation and `MoverSlopeAlignment-UE5.8.patch` when restoring the changes. The older staging folders are historical snapshots and do not include this stability update.
 
 ### Prone floor data (2026-10-11): Tip/Back/Center rebuild pending
 

@@ -4,7 +4,7 @@ The reviewed fix is installed in the global UE 5.8 Mover source. **Native rebuil
 and post-build gameplay verification are pending.** The existing successful build
 predates this change and does not verify it. Do not use Live Coding for this change.
 
-After saving and closing Unreal yourself, run `Tools/RebuildGlobalMover.cmd` as
+After saving and closing Unreal yourself, run `ProjectResources/Tools/RebuildGlobalMover.cmd` as
 administrator from File Explorer or an external terminal. The project instruction
 reserves editor shutdown and native recompilation for the user. This change does
 not launch a build or terminate the editor.

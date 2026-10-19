@@ -15,6 +15,6 @@ Build log: `Saved/VibeUE/Builds/GlobalMover/EditorBuild-20261015-175042.log`. Mo
 
 The install wrapper recorded an earlier failure, but the underlying native build completed successfully; authoritative build evidence is `Saved/VibeUE/last-build.json` and `Saved/VibeUE/StandardProneCapsule-20261015/verification.json`.
 
-Rollback source and manifest: `Saved/VibeUE/StandardProneCapsule-20261015/before` and `manifest.json`. The reviewed incremental patch is tracked at `Tools/Patches/MoverStandardProneCapsule-UE5.8.patch`; staging/install helpers are `Tools/StageStandardProneCapsule.py` and `Tools/InstallAndBuildStandardProne.ps1`. Save and close Unreal before using `Tools/RebuildGlobalMover.py` for later native builds.
+Rollback source and manifest: `Saved/VibeUE/StandardProneCapsule-20261015/before` and `manifest.json`. The reviewed incremental patch is tracked at `ProjectResources/Tools/Patches/MoverStandardProneCapsule-UE5.8.patch`; staging/install helpers are `ProjectResources/Tools/StageStandardProneCapsule.py` and `ProjectResources/Tools/InstallAndBuildStandardProne.ps1`. Save and close Unreal before using `ProjectResources/Tools/RebuildGlobalMover.py` for later native builds.
 
 Removing tilt state changes the stance network serialization layout; use the same native plugin revision for all peers.

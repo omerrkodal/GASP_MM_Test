@@ -7,13 +7,13 @@ import hashlib
 import json
 from pathlib import Path
 
-PROJECT = Path(__file__).resolve().parents[2]
+PROJECT = Path(__file__).resolve().parents[3]
 STAGED = Path(__file__).resolve().parent / 'Source'
 ENGINE_SOURCE = Path('C:/Program Files/Epic Games/UE_5.8/Engine/Plugins/Experimental/Mover/Source/Mover')
 EVIDENCE = PROJECT / 'Saved/VibeUE/NativeRootReconciliation'
 BACKUP = EVIDENCE / 'Before'
 MANIFEST = EVIDENCE / 'manifest.json'
-PATCH = PROJECT / 'Tools/Patches/MoverOffsetRootReconcile-UE5.8.patch'
+PATCH = PROJECT / 'ProjectResources/Tools/Patches/MoverOffsetRootReconcile-UE5.8.patch'
 
 
 def digest(data: bytes | None) -> str | None:

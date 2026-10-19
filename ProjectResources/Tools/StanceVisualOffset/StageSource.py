@@ -11,7 +11,7 @@ import hashlib
 import json
 from pathlib import Path
 
-PROJECT = Path(__file__).resolve().parents[2]
+PROJECT = Path(__file__).resolve().parents[3]
 TASK = Path(__file__).resolve().parent
 EVIDENCE = PROJECT / "Saved/VibeUE/StanceVisualOffset"
 ENGINE_SOURCE = Path("C:/Program Files/Epic Games/UE_5.8/Engine/Plugins/Experimental/Mover/Source/Mover")
@@ -58,11 +58,11 @@ def stage() -> dict:
     staged.parent.mkdir(parents=True, exist_ok=True)
     backup.write_bytes(original)
     staged.write_text(replacement, encoding="utf-8", newline="\n")
-    patch = PROJECT / "Tools/Patches/MoverStanceVisualOffset-UE5.8.patch"
+    patch = PROJECT / "ProjectResources/Tools/Patches/MoverStanceVisualOffset-UE5.8.patch"
     patch.write_text("".join(difflib.unified_diff(text.splitlines(True), replacement.splitlines(True),
                      fromfile="a/" + RELATIVE.as_posix(), tofile="b/" + RELATIVE.as_posix())), encoding="utf-8")
     # Keep the original standard-capsule generator from reintroducing this gate.
-    generator = PROJECT / "Tools/StageStandardProneCapsule.py"
+    generator = PROJECT / "ProjectResources/Tools/StageStandardProneCapsule.py"
     generator_text = generator.read_text(encoding="utf-8")
     assert generator_text.count(OLD) == 1, "Unexpected standard-capsule generator"
     (EVIDENCE / "StageStandardProneCapsule.before.py").write_bytes(generator.read_bytes())

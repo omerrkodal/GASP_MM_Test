@@ -47,7 +47,7 @@ radius hold, and releases it at a bounded rate after completion/cancellation.
 
 `InstallSlopeHoldSource.ps1` installs only the hash-checked `slope-hold-v2` source
 revision. It never shuts down UE or builds. Recompile using the user's external
-`Tools/RebuildGlobalMover.py` workflow and reopen the editor. Then execute
+`ProjectResources/Tools/RebuildGlobalMover.py` workflow and reopen the editor. Then execute
 `WireSlopeHold.py` through Unreal Python. It checks the new native getter exists
 before editing the ABP, copies its hold on game-thread PostEvaluateAnimation, and
 uses `max(RootRadiusCurveOutput, RootReconcileRadiusHold)` in the thread-safe getter.

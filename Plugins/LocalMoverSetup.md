@@ -23,7 +23,7 @@ retain its character assets.
 ## Rebuild before opening the migrated project
 
 1. Save and close Unreal.
-2. Run `Tools/RebuildGlobalMover.cmd` from File Explorer or an external terminal.
+2. Run `ProjectResources/Tools/RebuildGlobalMover.cmd` from File Explorer or an external terminal.
    Its legacy filename is retained, but it builds the **local** plugin group.
 3. Wait for `BUILD SUCCEEDED`, then reopen `GASP_MM_Test.uproject`.
 

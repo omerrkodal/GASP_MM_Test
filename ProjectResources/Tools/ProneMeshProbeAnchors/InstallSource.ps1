@@ -1,6 +1,6 @@
 # Install only. The user owns shutdown/rebuild/relaunch from an external terminal.
 $ErrorActionPreference = 'Stop'
-$projectRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+$projectRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
 $evidence = Join-Path $projectRoot 'Saved/VibeUE/ProneMeshProbeAnchors'
 $manifest = Get-Content -LiteralPath (Join-Path $evidence 'manifest.json') -Raw | ConvertFrom-Json
 $engineSource = 'C:/Program Files/Epic Games/UE_5.8/Engine/Plugins/Experimental/Mover/Source/Mover'

@@ -4,7 +4,7 @@ import difflib
 import hashlib
 import json
 
-PROJECT = Path(__file__).resolve().parents[2]
+PROJECT = Path(__file__).resolve().parents[3]
 ENGINE_SOURCE = Path('C:/Program Files/Epic Games/UE_5.8/Engine/Plugins/Experimental/Mover/Source/Mover')
 OUT = Path(__file__).resolve().parent
 EVIDENCE = PROJECT / 'Saved/VibeUE/ProneMeshProbeAnchors'
@@ -144,11 +144,11 @@ for name in FILES:
     patch.extend(difflib.unified_diff(original[name].splitlines(True), changed[name].splitlines(True),
         fromfile='a/' + name, tofile='b/' + name))
     # Keep the project-owned source mirrors consistent for future installation helpers.
-    mirror = (PROJECT / 'Tools/NativeRootReconciliation/Source' / name
-              if name != FILES[2] else PROJECT / 'Tools/StandardProneSource' / name)
+    mirror = (PROJECT / 'ProjectResources/Tools/NativeRootReconciliation/Source' / name
+              if name != FILES[2] else PROJECT / 'ProjectResources/Tools/StandardProneSource' / name)
     mirror.write_text(changed[name], encoding='utf-8', newline='\n')
     print('MODIFIED:', mirror.relative_to(PROJECT))
 (EVIDENCE / 'manifest.json').write_text(json.dumps(manifest, indent=2))
-patch_file = PROJECT / 'Tools/Patches/MoverProneMeshProbeAnchors-UE5.8.patch'
+patch_file = PROJECT / 'ProjectResources/Tools/Patches/MoverProneMeshProbeAnchors-UE5.8.patch'
 patch_file.write_text(''.join(patch), encoding='utf-8')
 print('STAGED:', json.dumps(manifest))
