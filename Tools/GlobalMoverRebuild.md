@@ -1,16 +1,16 @@
-# Rebuilding the global Mover plugin
+# Rebuilding the project-local Mover plugin
 
 ## Run from outside Unreal
 
 The terminal embedded in Unreal exits with the editor. Use File Explorer or an external terminal for this build.
 
 1. Save your work and close Unreal.
-2. In this project's `Tools` folder, right-click **RebuildGlobalMover.cmd** and choose **Run as administrator**. The engine plugin is installed under Program Files.
+2. Run **RebuildGlobalMover.cmd** in this project's `Tools` folder. It builds the local Mover, ChaosMover and MoverExamples plugins and does not require administrator access.
 3. Wait for **BUILD SUCCEEDED**, then reopen `GASP_MM_Test.uproject`.
 
 The launcher uses Unreal's bundled Python; no Python packages are needed. You can also start the launcher from File Explorer while Unreal is open: it waits up to ten minutes for the editor to close normally. It never closes Unreal itself.
 
-With an external administrator terminal and Python 3:
+With an external terminal and Python 3:
 
 ```powershell
 python "F:\Unreal Projects\GASP_MM_Test\Tools\RebuildGlobalMover.py"
@@ -18,15 +18,15 @@ python "F:\Unreal Projects\GASP_MM_Test\Tools\RebuildGlobalMover.py"
 
 ## What gets built
 
-- Global plugin: `C:\Program Files\Epic Games\UE_5.8\Engine\Plugins\Experimental\Mover`.
+- Local plugins: `Plugins/Mover`, `Plugins/ChaosMover`, and `Plugins/MoverExamples`. MoverExamples includes its complete Content folder to preserve `/MoverExamples/` asset references.
 - Target: **GASP_MM_TestEditor / Win64 / Development**, with this project's `.uproject`. The generic `UnrealEditor` target excluded Mover in this installation and only wrote metadata.
-- The build passes **`-Plugin=<global Mover.uplugin>`** explicitly. In an installed engine, UBT can reuse Epic's precompiled/read-only module rules even after editing `Mover.Build.cs`. The explicit plugin argument disables precompiled reuse for Mover's modules and includes their compile/link actions.
+- UBT discovers the three plugins from the project. **Do not pass `-Plugin`**: it gives Mover a separate scope and triggers `Project -> Plugin` dependency errors for ChaosMover and MoverExamples.
 - UBT regenerates this Blueprint project's temporary `Intermediate/Source` targets when needed; deleting Intermediate does not require changing the build to the generic engine target.
-- Logs: `Saved/VibeUE/Builds/GlobalMover/EditorBuild-<timestamp>.log`.
+- Logs: `Saved/VibeUE/Builds/LocalMover/EditorBuild-<timestamp>.log`.
 - Actual build status: `Saved/VibeUE/last-build.json`, also read by `WorkflowService.get_environment()`.
-- Success requires UBT exit code 0 and a global Mover DLL at least as recent as its source. It does not claim runtime verification.
+- Success requires UBT exit code 0 and all six local plugin module DLLs at least as recent as their module source. It does not claim runtime verification.
 
-Deleting the project's **Intermediate** folder removes generated build files, but the global plugin also has engine-level build artifacts. Deleting **DerivedDataCache** clears asset cache data; it does not rebuild a C++ DLL. Neither deletion alone verifies the modified global plugin compiled.
+Deleting **Intermediate** removes generated build files. Deleting **DerivedDataCache** clears asset cache data; it does not rebuild a C++ DLL.
 
 The script performs an incremental native build. Changed headers and C++ files trigger their required compile/link actions. It does not delete engine binaries or caches, install source, or open the editor.
 

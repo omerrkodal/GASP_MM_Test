@@ -1,10 +1,9 @@
-"""Build the modified engine-level Mover with Unreal closed. Uses only Python's standard library."""
+"""Build project-local Mover, ChaosMover and MoverExamples with Unreal closed."""
 
 from __future__ import annotations
 
 import argparse
 import base64
-import ctypes
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -16,6 +15,7 @@ import time
 
 
 DEFAULT_ENGINE = Path(r"C:\Program Files\Epic Games\UE_5.8")
+LOCAL_PLUGINS = ("Mover", "ChaosMover", "MoverExamples")
 
 
 def utc_now() -> str:
@@ -39,7 +39,7 @@ def powershell_command(code: str) -> list[str]:
 
 
 def running_editors() -> list[str]:
-    # Check all editor sessions: any of them can hold the shared engine plugin DLLs open.
+    # Check all editor sessions before rebuilding the project's plugin DLL.
     code = (
         "$ErrorActionPreference='Stop'; "
         "Get-Process UnrealEditor -ErrorAction SilentlyContinue | "
@@ -104,6 +104,35 @@ def file_digest(path: Path) -> str | None:
     return digest.hexdigest()
 
 
+def local_module_inputs(project: Path) -> list[dict]:
+    """Check every migrated plugin and enumerate its editor binaries."""
+    modules = []
+    for name in LOCAL_PLUGINS:
+        plugin = project.parent / "Plugins" / name
+        descriptor = plugin / (name + ".uplugin")
+        if not descriptor.is_file():
+            raise RuntimeError(f"Required local plugin is missing: {descriptor}")
+        source = [p for p in (plugin / "Source").rglob("*")
+                  if p.is_file() and p.suffix.lower() in {".cpp", ".h", ".cs"}]
+        if not source:
+            raise RuntimeError(f"Local plugin source is missing: {plugin}")
+        newest = max(p.stat().st_mtime for p in source)
+        manifest = plugin / "Binaries" / "Win64" / "UnrealEditor.modules"
+        filenames = (json.loads(manifest.read_text(encoding="utf-8-sig")).get("Modules", {})
+                     if manifest.is_file() else {})
+        for module in json.loads(descriptor.read_text(encoding="utf-8-sig"))["Modules"]:
+            module_name = module["Name"]
+            filename = filenames.get(module_name, f"UnrealEditor-{module_name}.dll")
+            if Path(filename).name != filename:
+                raise RuntimeError(f"Unexpected module filename: {filename}")
+            module_source = [p for p in (plugin / "Source" / module_name).rglob("*")
+                             if p.is_file() and p.suffix.lower() in {".cpp", ".h", ".cs"}]
+            modules.append({"plugin": name, "module": module_name,
+                            "binary": str(plugin / "Binaries" / "Win64" / filename),
+                            "newestSourceTimestamp": max((p.stat().st_mtime for p in module_source), default=newest)})
+    return modules
+
+
 def rebuild(args: argparse.Namespace) -> int:
     if os.name != "nt":
         raise RuntimeError("This launcher targets the project's Windows UE 5.8 installation.")
@@ -112,19 +141,17 @@ def rebuild(args: argparse.Namespace) -> int:
     if engine.name.lower() != "engine":
         engine /= "Engine"
     build_bat = engine / "Build" / "BatchFiles" / "Build.bat"
-    plugin = engine / "Plugins" / "Experimental" / "Mover"
+    plugin = project.parent / "Plugins" / "Mover"
     rules = plugin / "Source" / "Mover" / "Mover.Build.cs"
     required = [build_bat, engine / "Source" / "UnrealEditor.Target.cs", rules,
                 plugin / "Source" / "Mover" / "Private" / "MoveLibrary" / "ProneFloorTraceUtils.cpp"]
     for path in required:
         if not path.is_file():
             raise RuntimeError(f"Required build input is missing: {path}")
-    if not args.plan_only and not ctypes.windll.shell32.IsUserAnAdmin():
-        raise RuntimeError("The global plugin is in Program Files. Right-click RebuildGlobalMover.cmd and choose 'Run as administrator'.")
-
+    local_modules = local_module_inputs(project)
     if not args.plan_only:
         wait_until_closed(args.wait_for_close)
-    evidence_dir = project.parent / "Saved" / "VibeUE" / "Builds" / "GlobalMover"
+    evidence_dir = project.parent / "Saved" / "VibeUE" / "Builds" / "LocalMover"
     evidence_dir.mkdir(parents=True, exist_ok=True)
     log = evidence_dir / ("EditorBuild-" + datetime.now().strftime("%Y%m%d-%H%M%S") + ".log")
     status_path = project.parent / "Saved" / "VibeUE" / "last-build.json"
@@ -134,14 +161,12 @@ def rebuild(args: argparse.Namespace) -> int:
                     if p.is_file() and p.suffix.lower() in {".cpp", ".h", ".cs"}]
     newest_source = max(p.stat().st_mtime for p in source_files)
     build_args = [target, "Win64", "Development", f"-Project={project}",
-                  f"-Plugin={plugin / 'Mover.uplugin'}",
                   "-WaitMutex", "-NoHotReloadFromIDE", "-NoUBTMakefiles", "-NoLiveCoding"]
     # Build the project's editor target so its enabled plugins are included. UBT's
     # NativeProjects support regenerates temporary targets for this Blueprint project.
     # The generic UnrealEditor target can exclude Mover and return metadata-only success.
-    # An installed engine normally reuses read-only/precompiled engine module rules.
-    # The explicit -Plugin argument clears bUsePrecompiled for this plugin's modules
-    # in UEBuildTarget.CreateModuleByName, even when its cached rules are read-only.
+    # Project plugins are discovered together from Plugins/. Do not pass -Plugin:
+    # that gives Mover a separate scope and breaks Project -> Plugin dependencies.
     actions_path = evidence_dir / (log.stem + "-actions.json")
     if args.plan_only:
         build_args.append(f"-WriteOutdatedActions={actions_path}")
@@ -151,15 +176,16 @@ def rebuild(args: argparse.Namespace) -> int:
         "status": "planning" if args.plan_only else "running", "startedAtUtc": utc_now(),
         "target": target, "platform": "Win64", "configuration": "Development",
         "projectPath": str(project), "enginePath": str(engine), "pluginPath": str(plugin),
-        "runner": "Tools/RebuildGlobalMover.py (standalone UBT; installed VibeUE has no build launcher)",
+        "runner": "Tools/RebuildGlobalMover.py (standalone UBT; project-local Mover plugin)",
         "logPath": str(log), "arguments": build_args,
         "moverBinaryBefore": str(binary), "moverSha256Before": file_digest(binary),
         "newestMoverSourceTimestamp": newest_source,
+        "localModules": local_modules,
     }
     # Exporting actions is not a native build and must not overwrite lastBuild evidence.
     record_path = actions_path.with_name(actions_path.stem + "-result.json") if args.plan_only else status_path
     atomic_json(record_path, record)
-    print(f"Project: {project}\nGlobal plugin: {plugin}\nBuild target: {target} Win64 Development\nLog: {log}", flush=True)
+    print(f"Project: {project}\nLocal plugin: {plugin}\nBuild target: {target} Win64 Development\nLog: {log}", flush=True)
     print("Exporting build actions only; compilation/linking will not run." if args.plan_only else
           "Keep Unreal closed until BUILD SUCCEEDED. This script does not launch the editor.", flush=True)
     exit_code = 1
@@ -188,15 +214,30 @@ def rebuild(args: argparse.Namespace) -> int:
                 any(os.path.normcase(str(Path(output))) == expected_binary for output in action.get("ProducedItems", []))
                 for action in pending
             )
-            if (not binary.is_file() or binary.stat().st_mtime + 2 < newest_source) and not dll_link_planned:
-                raise RuntimeError("The global Mover DLL is stale, but this action plan does not include its rebuild. No verified plan is recorded.")
+            links = {os.path.normcase(str(Path(output)))
+                     for action in pending if action.get("Type") == "Link"
+                     for output in action.get("ProducedItems", [])}
+            for module in local_modules:
+                module_binary = Path(module["binary"])
+                module["dllLinkPlanned"] = os.path.normcase(str(module_binary)) in links
+                stale = (not module_binary.is_file() or
+                         module_binary.stat().st_mtime + 2 < module["newestSourceTimestamp"])
+                if stale and not module["dllLinkPlanned"]:
+                    raise RuntimeError(f"Local {module['module']} DLL needs a rebuild, but no link action was planned.")
             record.update({"status": "planned", "actionsPath": str(actions_path),
                            "actionCount": len(pending), "moverDllLinkPlanned": dll_link_planned})
             print(f"\nBUILD PLAN EXPORTED: {actions_path}\nThis is not a completed native build.", flush=True)
             return 0
         binary = mover_binary(plugin)
         if not binary.is_file() or binary.stat().st_mtime + 2 < newest_source:
-            raise RuntimeError("UBT returned success, but the global Mover DLL is missing or older than its source. No successful build is recorded.")
+            raise RuntimeError("UBT returned success, but the local Mover DLL is missing or older than its source. No successful build is recorded.")
+        built_modules = local_module_inputs(project)
+        for module in built_modules:
+            module_binary = Path(module["binary"])
+            if not module_binary.is_file() or module_binary.stat().st_mtime + 2 < module["newestSourceTimestamp"]:
+                raise RuntimeError(f"UBT returned success, but local {module['module']} is missing or stale.")
+            module["sha256"] = file_digest(module_binary)
+        record["localModules"] = built_modules
         record.update({"status": "succeeded", "moverBinary": str(binary), "moverSha256": file_digest(binary),
                        "moverBinaryTimestamp": binary.stat().st_mtime, "moverBinarySize": binary.stat().st_size})
         print(f"\nBUILD SUCCEEDED\nMover DLL: {binary}\nYou can reopen {project.name} now.", flush=True)

@@ -111,5 +111,8 @@ Engine/Programs/UnrealBuildTool/*
 **/Characters/UEFN_Mannequin/Animations/*
 !**/Characters/UEFN_Mannequin/Animations/MotionMatchingData/
 !**/Characters/UEFN_Mannequin/Animations/MotionMatchingData/**
+
+# Preserve the complete content of the project-local Mover examples plugin.
+!/Plugins/MoverExamples/Content/**
 !**/Characters/UEFN_Mannequin/Animations/ExperimentalStateMachineData/
 !**/Characters/UEFN_Mannequin/Animations/ExperimentalStateMachineData/**

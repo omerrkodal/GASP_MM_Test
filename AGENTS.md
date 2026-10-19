@@ -295,7 +295,7 @@ crash handler — MCP will hang; relaunch); fresh and small → the editor is fi
   next session doesn't relearn it.
 <!-- END VibeUE -->
 
-<!-- Local build gotcha: The embedded terminal exits with Unreal; rebuild global Mover externally using Tools/RebuildGlobalMover.cmd. Use the project editor target plus -Plugin=<global Mover.uplugin>; the generic UnrealEditor target may return metadata-only success. UBT regenerates this project's temporary targets after Intermediate deletion. -->
+<!-- Local build gotcha: Mover, ChaosMover and MoverExamples are project-local under Plugins; rebuild externally using Tools/RebuildGlobalMover.cmd. Use the project editor target without -Plugin: explicit -Plugin places Mover in a separate scope and fails Project -> Plugin dependency validation. UBT regenerates this project's temporary targets after Intermediate deletion. -->
 
 <!-- Chaos 5.8 gotcha: MakeImplicitObjectPtr is a global function template; use ::MakeImplicitObjectPtr<Chaos::FCapsule>, not Chaos::MakeImplicitObjectPtr. -->
 
@@ -429,3 +429,4 @@ crash handler — MCP will hang; relaunch); fresh and small → the editor is fi
 <!-- Uncrawl slope floor-smoothing gotcha (2026-10-18): Running TS_ProneFloorSmoothing while not crawling overwrites ABP Tip/Center/Back floor data with Update_FloorValues's non-prone reset (bDoesHit=false, Normal=(0,0,1), Location=(0,0,0)), causing CR_Prone to flatten to (0,0,1) and drop slope height during the 0.33s stance blend-out. Keep TS_ProneFloorSmoothing gated by IsCrawling (user-verified fix in SandboxCharacter_Mover_ABP). -->
 
 <!-- Movement Edge Detection slope normal gotcha (2026-10-18): Movement Edge Detection now selects Tip Floor Data.Normal when moving forward (dot > 0.25), Back Floor Data.Normal when moving backward (dot < -0.25), and Center Floor Data.Normal otherwise, with bDoesHit fallback chains (Center -> Tip -> Back -> ActorUp). The 100cm Start offset projects along SelectedFloorNormal's plane and End traces -60cm along -SelectedFloorNormal. Single sphere trace retained; compiled/saved and 37 other graphs audited unchanged. Scripts/rollback: Tools/ApplyMovementEdgeSlopeNormal.py, Tools/RollbackMovementEdgeSlopeNormal.py, Saved/VibeUE/MovementEdgeSlopeNormal. -->
+<!-- Local Mover migration (2026-10-19): Keep Mover, ChaosMover and MoverExamples together under project Plugins; engine dependents cannot reference project Mover. Omit -Plugin in project builds. UBT dependency validation and six local DLL link plans passed; full build/reload remain user-owned. Preserve all MoverExamples Content despite Characters ignore rules. Inventory and reinstall steps: Plugins/LocalMoverMigration.json and Plugins/LocalMoverSetup.md. -->

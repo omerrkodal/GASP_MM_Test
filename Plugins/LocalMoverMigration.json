@@ -1,0 +1,1097 @@
+{
+  "engineVersion": "5.8.3-58210709+++UE5+Release-5.8",
+  "date": "2026-10-19",
+  "nativeBuild": "pending-user-build",
+  "plugins": {
+    "Mover": {
+      "fileCount": 191,
+      "sourceAndConfigSha256": {
+        "Config/DefaultMover.ini": "e1aef77c95c0131bfbb77d8d103d4bb4b96fa622533a641c9c456956d61c1749",
+        "Config/FilterPlugin.ini": "b7776c3df4f21643b440b96bdfcfb22e111f353a1d99bc5e0d8ac95133bfa8c1",
+        "Mover.uplugin": "8cace4020831cc81c9e725736d35e626177541596b5f8f28e7f434a76656f1ba",
+        "README.md": "97d22f404155732653424d8c5e4e231d8e871152219921fda18dfacaba00fd78",
+        "Resources/Icon128.png": "f7239efaeefbd82de33ebe18518e50de075ea4188a468a9e4991396433d2275f",
+        "Resources/MoverInfo.svg": "9fe1a7de16a4a3c08240317746d7351f88e0f68c22917523377a37b4d5c25735",
+        "Source/Mover/Mover.Build.cs": "b848230427c0581a0cbd7aabb7cf3d5ba5e470d97d3705061cb1bcbaabecc3f5",
+        "Source/Mover/Private/Backends/MoverNetworkPredictionLiaison.cpp": "68979ffea5fcbba8c7c6a7b52626ef6c5392084a01982145bb53712bd9b163d3",
+        "Source/Mover/Private/Backends/MoverStandaloneLiaison.cpp": "6ec041f923dc2d559387445cb955bae0dcf1362bd8d011c72194837b97b8bbe5",
+        "Source/Mover/Private/BlueprintDataExt.cpp": "bc4ac1b9d304de7b380832c13b23b6ae8715df0b3bda6b5df5fb2019c881b823",
+        "Source/Mover/Private/ChaosVisualDebugger/MoverCVDRuntimeTrace.cpp": "7abdd843c57f3e7bc0cd2da8e9d21f23cbd69afefd1950290d201b2190e43f49",
+        "Source/Mover/Private/Debug/GameplayDebuggerCategory_Mover.cpp": "48e2fe484a13e35005d9488959e7a17a55ce558c5ec761321fbf06e55bae21d9",
+        "Source/Mover/Private/Debug/GameplayDebuggerCategory_Mover.h": "f7f1f39cb79146f7e2271b12bbdb2e56f6ebabf7b64c2c944352242f27db0107",
+        "Source/Mover/Private/Debug/MoverDebugComponent.cpp": "4cabcca1954366b40749b82e2c25a4ded87a1393566d174c6dfb42340a15ab85",
+        "Source/Mover/Private/DefaultMovementSet/CharacterMoverComponent.cpp": "05d4de1e24455848252242c7fa0db4b138f0ea7084e91f825a643be6ba1afed3",
+        "Source/Mover/Private/DefaultMovementSet/CharacterMoverSimulationTypes.cpp": "74fbdee2ba2d6a79a4e17143c62e224aa1b37dd998e3c99bfcea5a6ff9b6e579",
+        "Source/Mover/Private/DefaultMovementSet/InstantMovementEffects/BasicInstantMovementEffects.cpp": "a5f81d3c9d0f20fdb526316786ee5bd50ecf48e24f7945c355f1618bc59a10c2",
+        "Source/Mover/Private/DefaultMovementSet/InstantMovementEffects/OffsetRootReconcileEffect.cpp": "2f4ebfd7f84a4ca4658eaa5a352fdb39216f4ecf6ad743271e91af22960b87d2",
+        "Source/Mover/Private/DefaultMovementSet/LayeredMoves/AnimRootMotionLayeredMove.cpp": "a74763e573a00e0afce8013b9365f8fcac040e42975b158e2c867895f5006c73",
+        "Source/Mover/Private/DefaultMovementSet/LayeredMoves/AnimRootMotionWarpingTypes.cpp": "fa68b4d098cf0466e11dfe49bc055890b3ba5ac01b30270641dcd002e54ab5b3",
+        "Source/Mover/Private/DefaultMovementSet/LayeredMoves/BasicLayeredMoves.cpp": "87ae90f19e4bd53d24f43fffcb95d1efb27126560feac8c9ae23d3b0ff4edba9",
+        "Source/Mover/Private/DefaultMovementSet/LayeredMoves/LaunchMove.cpp": "48f0648e02654e93e72a11ae224cdb00c227b051fccae5cb363d62e06114b030",
+        "Source/Mover/Private/DefaultMovementSet/LayeredMoves/MontageStateProvider.cpp": "5161599c5a8971b8c696217b00535bc4867fc3e57d8ac84b1272a148b972b2c7",
+        "Source/Mover/Private/DefaultMovementSet/LayeredMoves/MultiJumpLayeredMove.cpp": "98d00d9b997fd4a86f0de41d4438fe2efcf51905b77530de142ecb9d55317be2",
+        "Source/Mover/Private/DefaultMovementSet/LayeredMoves/RootMotionAttributeLayeredMove.cpp": "12a9d86b6cd79c24a55c51f8a8523c3d1f57a5ff786aee7be6be033e28d84b9e",
+        "Source/Mover/Private/DefaultMovementSet/Modes/AsyncFallingMode.cpp": "f3c52bdc9c4de66a74d6676333a99119128d4482ab509cfd9ed1cfb27068506a",
+        "Source/Mover/Private/DefaultMovementSet/Modes/AsyncFlyingMode.cpp": "59e49c8ae98b4b4e7250619390409b8e50c820fa0887acc7052c12ec5803fc84",
+        "Source/Mover/Private/DefaultMovementSet/Modes/AsyncNavWalkingMode.cpp": "292072529536e44ea5d284bac65dc203a52c679fb4253233f49d35f0023a0e22",
+        "Source/Mover/Private/DefaultMovementSet/Modes/AsyncWalkingMode.cpp": "1785db95be2c242b80a667a7fa2493d5240e20a0a770f498f942c827d985e70c",
+        "Source/Mover/Private/DefaultMovementSet/Modes/FallingMode.cpp": "5798eb4ac86ad3d799c59796128d072d2038aedd42b73701befe5c94b3929fcb",
+        "Source/Mover/Private/DefaultMovementSet/Modes/FlyingMode.cpp": "cac07b0a4cf602ed863b8d4ca3ff8b38cc2b1dfc124b37bb48dd8e8c1c9397c2",
+        "Source/Mover/Private/DefaultMovementSet/Modes/NavWalkingMode.cpp": "3347cb5db3430147427a303b1dc79c1879ad14ffcd459c19ee690cbc23e1001e",
+        "Source/Mover/Private/DefaultMovementSet/Modes/SimpleFlyingMode.cpp": "7266fff7590d8ead6a7f7852a5a2a406a3f0f14793c07af3a362fe3da62dad87",
+        "Source/Mover/Private/DefaultMovementSet/Modes/SimpleSpringState.cpp": "dc060e354fa0797c7fc9e0628b1025a075c25457c31efa391fe1f698f3af7999",
+        "Source/Mover/Private/DefaultMovementSet/Modes/SimpleSpringState.h": "25ff243a2505a155a3bf30f4a03aeb1f2036d66014e20bf98b9d6db153d917b0",
+        "Source/Mover/Private/DefaultMovementSet/Modes/SimpleSpringWalkingMode.cpp": "96c272f8d444cf57e0c313aed97be9766e0f2dffb837fc72959af2affbb9b21d",
+        "Source/Mover/Private/DefaultMovementSet/Modes/SimpleWalkingMode.cpp": "71fdea2524e2db434edcd6b2c045c90de0095675a16db430059ec8955f445aaa",
+        "Source/Mover/Private/DefaultMovementSet/Modes/SmoothWalkingMode.cpp": "00cf3fcf6ac9a5a1c032aa8905bed867fe153d6378370f310eaa28c443187d1a",
+        "Source/Mover/Private/DefaultMovementSet/Modes/SmoothWalkingState.cpp": "cff904828a842470d55adca362146870d579e1443463f75dd9775941041fe5d2",
+        "Source/Mover/Private/DefaultMovementSet/Modes/SmoothWalkingState.h": "5ae288a508bef2d4d0fdb8e6300d5754121ee56bb524a096fdece6d181e5267b",
+        "Source/Mover/Private/DefaultMovementSet/Modes/SwimmingMode.cpp": "0bade2ee8c8d181a19267b24cb46ec99733827adda7590a2c78546db6213b835",
+        "Source/Mover/Private/DefaultMovementSet/Modes/WalkingMode.cpp": "809c889ae123278de95181d7e2b4092025296b16a084ee8c076f707331cdba9d",
+        "Source/Mover/Private/DefaultMovementSet/MovementModifiers/StanceModifier.cpp": "6c1efcdffe173d207a9f93ce26ed61ec97d2136cac073afc3102e0120800797a",
+        "Source/Mover/Private/DefaultMovementSet/MoverMontageSimulationTypes.cpp": "04d6bfc7ba1c4aee8324743febc635ff1db2cb0801349e591814190ef97ee6be",
+        "Source/Mover/Private/DefaultMovementSet/NavMoverComponent.cpp": "919270b2f8fcfe8fc518ccdf3e7cdf3ca2163946d934cec982ee776dace7fd4b",
+        "Source/Mover/Private/InputContainerStruct.cpp": "b5271deb982abd56aa0cdf4093c0db714bf89da5b44157a828dc35d4d212bf8e",
+        "Source/Mover/Private/InstantMovementEffect.cpp": "cf043bc4ebdbf8b468528cc53ed899cc83927e2968df2a92b0346d940b5b83d9",
+        "Source/Mover/Private/KinematicActorSimulation.cpp": "cf5b5506f197cd3d6325427a1b3ef2aa89f36a942073f53f8142a3752ece85e9",
+        "Source/Mover/Private/LayeredMove.cpp": "4ce01de8b170b37b59db31a5744ab447544b3af25deda161634b545c306325de",
+        "Source/Mover/Private/LayeredMoveBase.cpp": "59763030bf4f036d34d60930fe5cb1bc2cc2be68de1df8879b04f940154ec88d",
+        "Source/Mover/Private/LayeredMoveGroup.cpp": "8b9c6464e74daf5c982baf5c7226ebc37c525079c3598925a7e4a6c15cafcb29",
+        "Source/Mover/Private/MotionWarpingMoverAdapter.cpp": "d6a106168c8be11ff1ed1ea6a761db5560270aae691be68c89c8b507a7276bbe",
+        "Source/Mover/Private/MoveLibrary/AirMovementUtils.cpp": "78140248f00e2d52b70a32e812f89f03b5fe4b0707bdcd6703e0a7bb0f6d93ed",
+        "Source/Mover/Private/MoveLibrary/AsyncMovementUtils.cpp": "d21fc677b6646906750fa89da9a0c9f0e42d87072241208b3ddf7acc4fe9d906",
+        "Source/Mover/Private/MoveLibrary/BasedMovementUtils.cpp": "a7963e5e2ac0f3777e17ae63fdcfcf4b6a66d87cda042cadb2a9dacbd9a8f67e",
+        "Source/Mover/Private/MoveLibrary/ConstrainedMoveUtils.cpp": "cf9fd8ea48e485e9f22da21a03e671921c08e8f205d2f42dd5be91e9fe40b752",
+        "Source/Mover/Private/MoveLibrary/FloorQueryUtils.cpp": "2f2b21b3c309f8f80e9adeb357310899d38b7837f850ff825274cf2548c81e91",
+        "Source/Mover/Private/MoveLibrary/GroundMovementUtils.cpp": "78359f5505ad8ca74a1eace4562969bbdd88582245fd7f758e04115564807769",
+        "Source/Mover/Private/MoveLibrary/ModularMovement.cpp": "ef55214c6109095d4dcb6e2cd2611c0d762a02bedb8ac5c71802abdf55d3b5ae",
+        "Source/Mover/Private/MoveLibrary/MovementMixer.cpp": "8009694e9d9ce0bae27cd1523dc4b6e042c64296d5ed1f3f5b63c1fab19c674a",
+        "Source/Mover/Private/MoveLibrary/MovementRecord.cpp": "6844c29ab7c20efba415d3af460187907e6f4727ced6003ff59b3bfd2c1c6724",
+        "Source/Mover/Private/MoveLibrary/MovementRecordUtils.cpp": "b51d995de47b18acadaea91588046e385388dc200840d6edf29b4effc7d2c618",
+        "Source/Mover/Private/MoveLibrary/MovementUtils.cpp": "d1d786f2b1f632abbbe634121182f55cac8c08c396fe841cc1d0b61bd8b6c665",
+        "Source/Mover/Private/MoveLibrary/MovementUtilsTypes.cpp": "3b2a48238cdbc9bf4f7c9f30ef8884759e26aff35223d85b8beac013eb8c7de3",
+        "Source/Mover/Private/MoveLibrary/MoverBlackboard.cpp": "4ed0565484d4a5558369babadce3d048f096cb84ded71b2086d72655adaf263a",
+        "Source/Mover/Private/MoveLibrary/NavMovementUtils.cpp": "9d6e4c7af70e7ac78971b7f7dafc8393b202a6b269acfc74ebc552a4ba7c996c",
+        "Source/Mover/Private/MoveLibrary/NavMovementUtils.h": "ba3f89397054cf18ef60f9155562fb266ac4122457ba741b48dcec251d289f6a",
+        "Source/Mover/Private/MoveLibrary/PlayMoverMontageCallbackProxy.cpp": "96e6230614a90343aee1cf8b52f1f52ce863ae7bc75e8852e961ebd62263c699",
+        "Source/Mover/Private/MoveLibrary/ProneFloorTraceUtils.cpp": "639d0394e91a99686de71ab8d3d4926ff2c35f02c68642a4a4a17524f11f8f62",
+        "Source/Mover/Private/MoveLibrary/RollbackBlackboard.cpp": "933b23fca3236494b7f4d1044e734e637981f7d90e7aab6823f3329c8c4f0ddb",
+        "Source/Mover/Private/MoveLibrary/RollbackBlackboardLibrary.cpp": "2ba588b4e3267e75ee880644b4e9dcac37d3d2c66f544cdddaff7b905cd9483d",
+        "Source/Mover/Private/MoveLibrary/RollbackBlackboardWrappers.cpp": "ff9929030df91c7c938c106b22322b24477be2b0530a0d1547a0316a489d3cc7",
+        "Source/Mover/Private/MoveLibrary/WaterMovementUtils.cpp": "d30363e919bad96a2cb561742ea32f29de9eea49f48db124108bf97bbef08e50",
+        "Source/Mover/Private/MovementMode.cpp": "298aa3e41fa00c10f9c50918d2953d79baaadcc48e56342777a6d7ae609779e6",
+        "Source/Mover/Private/MovementModeStateMachine.cpp": "c3bbf1c87a615b3fe8ee117cfc12d8a0f42c0bcfe957ce8815189ba3dc510d5e",
+        "Source/Mover/Private/MovementModeTransition.cpp": "c8f50c547a0c0a2498dff968ca7d3ef70ac36b957c90a050e785d329b2c7137d",
+        "Source/Mover/Private/MovementModifier.cpp": "895b57cdaa177d974a9be1adddbd489feb16eb8200de5b0d4dd64f91a2364e6e",
+        "Source/Mover/Private/MoverComponent.cpp": "f5f8ee53e4d1640d203da9b4c7e55d8b365fbfc0c382346610a32a512301fe15",
+        "Source/Mover/Private/MoverDataModelTypes.cpp": "63f4862b2af80d88eca4e7ed93f721827b7aa51d33f48cb8a7b2fd2d47142d4d",
+        "Source/Mover/Private/MoverDeveloperSettings.cpp": "760fc66daecfaf93023ed233534dc22785e934e950714917c459a00d6a0bbe77",
+        "Source/Mover/Private/MoverGameplayTagLog.cpp": "4406f9af902f819eab907e55c54bd35e3f7c03231046cdf0f0faa73489283e5e",
+        "Source/Mover/Private/MoverLog.cpp": "239e016580ce0e182ccdbf15d1f260468eabdd823fb3fea5fa7773b8b035368a",
+        "Source/Mover/Private/MoverModule.cpp": "420c50e1af15dac294a4859ddda1e2ff60feb3127fa69f3306dca7acb1bd9a81",
+        "Source/Mover/Private/MoverPoseSearchTrajectoryPredictor.cpp": "ce72d54db2a98453b9120029731675979f268ce23d9b3fe77b294972abcaed51",
+        "Source/Mover/Private/MoverSchedulingUtils.cpp": "a2ccec65748fd348f6a9312aa7a2f0924c09f1bdf4469868199822b82338825c",
+        "Source/Mover/Private/MoverSimulation.cpp": "0e0866c78214ffb2ac64220125c8a4eef7932a2f16f7148133e698cd9261bdd8",
+        "Source/Mover/Private/MoverSimulationTypes.cpp": "e9592da08ddb4bbded787d308285de71f29b3d2c1fa053c3d4c392591a365b0f",
+        "Source/Mover/Private/MoverTypes.cpp": "3e6a1f141147c4edf9955f1f3bf403a36130b5a8ac448b99eccbaf1b8f291c2c",
+        "Source/Mover/Private/UserDefinedStructSupport.cpp": "54dca694f0ba85916d8f3d5eb77e20b169d9d3e0d0de333d290bcc4608a6eb50",
+        "Source/Mover/Public/Backends/MoverBackendLiaison.h": "2cd046367e56eea369336fbd353165234db82c6a87f8c1291da9d08799b8c653",
+        "Source/Mover/Public/Backends/MoverNetworkPredictionLiaison.h": "a28b49d77e17744eb0806e3416eb6177ab9ed5e06ae0c7e60b43069dbee11c21",
+        "Source/Mover/Public/Backends/MoverStandaloneLiaison.h": "4181f007dd9fd3e1856b8d7e1416e26a0cb0380eb6fb59912bbaece9ef1f984b",
+        "Source/Mover/Public/BlueprintDataExt.h": "89cc21c50b593822f642d43f4bcdc94099e05b3dbcef3e2570563aeddae8f1db",
+        "Source/Mover/Public/ChaosVisualDebugger/MoverCVDRuntimeTrace.h": "4c3d7354126c4bdc50a2c97fe4c84bfa4470c29eee172e86f66c8c62fef02d1a",
+        "Source/Mover/Public/Debug/MoverDebugComponent.h": "515dfb6211c3bf20b6410c06493c0370532e835d7be72e08662b962bd692035d",
+        "Source/Mover/Public/DefaultMovementSet/CharacterMoverComponent.h": "e8fae7bba3e3f2701ce2c51b89a7c2000c3c53c53a546da57b779b02baec402b",
+        "Source/Mover/Public/DefaultMovementSet/CharacterMoverSimulationTypes.h": "8badc8256a5c1f9233f84e1fa4268ecb061811ca86a297bc91c91ce0e068ce20",
+        "Source/Mover/Public/DefaultMovementSet/InstantMovementEffects/BasicInstantMovementEffects.h": "a57517e5879bea4e39fcb286b72d3f7a1ebd8bbb1c9ead9edf11fd2cb7f4ddb0",
+        "Source/Mover/Public/DefaultMovementSet/InstantMovementEffects/OffsetRootReconcileEffect.h": "dc88dab05af1508a550ab2ef941b93fbd170c1499050515c510c6fa39a5f73aa",
+        "Source/Mover/Public/DefaultMovementSet/LayeredMoves/AnimRootMotionLayeredMove.h": "33da021beb3e1133071d0d27813e644572eebafa6de9dc28918aeb18e9035d76",
+        "Source/Mover/Public/DefaultMovementSet/LayeredMoves/AnimRootMotionWarpingTypes.h": "f3bbaf2e10588d3154e9a35c8e0012f0aec10fd6f2e1437bef773d1d6e2e1aa1",
+        "Source/Mover/Public/DefaultMovementSet/LayeredMoves/BasicLayeredMoves.h": "e7f02df8a561788f9658d59090fcd4b558f0605fbf37accb9d4b99b522843417",
+        "Source/Mover/Public/DefaultMovementSet/LayeredMoves/LaunchMove.h": "3d5ddc12434a6d1dbfeb387ef7c331edd31f12f9771cb7c6e6234e69c608e2cf",
+        "Source/Mover/Public/DefaultMovementSet/LayeredMoves/MontageStateProvider.h": "ea95564ad05dc46fddb93feb2e78a38dbf597e529911481ea7bbdb1ad0dd90fd",
+        "Source/Mover/Public/DefaultMovementSet/LayeredMoves/MultiJumpLayeredMove.h": "48826781065fecd86de3b50e36f7f36b06f6375557608838802166be17809cff",
+        "Source/Mover/Public/DefaultMovementSet/LayeredMoves/RootMotionAttributeLayeredMove.h": "0882bb0b51e1f515ecc569112119e3fa730b4784d0e4fba3ccf89e97b34d8716",
+        "Source/Mover/Public/DefaultMovementSet/Modes/AsyncFallingMode.h": "75150108c9ac4ef53a053ffa9f5a95a5adf9e2b3651f2ebc2b5b3451598c491a",
+        "Source/Mover/Public/DefaultMovementSet/Modes/AsyncFlyingMode.h": "ce8c96c2879d9ed296bd91fc869dfc264c1fcf15fcbbe5c71b3ce6d74c13c26d",
+        "Source/Mover/Public/DefaultMovementSet/Modes/AsyncNavWalkingMode.h": "5fde6fa9a05dca7628af24fad9d49b42f79801a512c39f011948e5ebee8aece8",
+        "Source/Mover/Public/DefaultMovementSet/Modes/AsyncWalkingMode.h": "9b4af5c39a7e05f7565469a51d038628a626611d4edbf978e99368b49630cb1b",
+        "Source/Mover/Public/DefaultMovementSet/Modes/FallingMode.h": "77c2d01969bcd679b611b05dd1d068947375890d018ba228c0675b00fdfdb912",
+        "Source/Mover/Public/DefaultMovementSet/Modes/FlyingMode.h": "dfe34187dcf89cfad742fd85cf5466b51907272a079b4b5fc4235efd8dbba927",
+        "Source/Mover/Public/DefaultMovementSet/Modes/NavWalkingMode.h": "b669ff114eb9e8bcae6b57fd515ec63fb3a772a639e94f046716a2f19026c06d",
+        "Source/Mover/Public/DefaultMovementSet/Modes/SimpleFlyingMode.h": "cb6136c8f2a0ab1eb5c7516f9544ed8c6b4ed5619c282f74d5723658c0636482",
+        "Source/Mover/Public/DefaultMovementSet/Modes/SimpleSpringWalkingMode.h": "c5136d9acdbf8496d0e1048aea95c2dbb008dae606ae4ba4f934383ccd388b69",
+        "Source/Mover/Public/DefaultMovementSet/Modes/SimpleWalkingMode.h": "54726b9bd24713949015058fb1a346d8cff7e6e89313a29dc8bac8e74f795b15",
+        "Source/Mover/Public/DefaultMovementSet/Modes/SmoothWalkingMode.h": "eb04954114e0aff4544ce2865958706f3bee449c963087e73bfe1af14df692ba",
+        "Source/Mover/Public/DefaultMovementSet/Modes/SwimmingMode.h": "cc83a06c15541f115b066158206eb93271ece6780f5634ca60a56a207c86fa14",
+        "Source/Mover/Public/DefaultMovementSet/Modes/WalkingMode.h": "45e0f11b2849addfd496502e4a544dec2995b5321ac36d783260b02ef8846f09",
+        "Source/Mover/Public/DefaultMovementSet/MovementModifiers/StanceModifier.h": "1850d120f3fffe66d1a4d304c5da7df16f68df9360edad87b9dbdd6d542fe449",
+        "Source/Mover/Public/DefaultMovementSet/MoverMontageSimulationTypes.h": "b1f90dd7ce1c131a66b13be97ecd9de788e4776720ad53044885a22d16c7c87f",
+        "Source/Mover/Public/DefaultMovementSet/NavMoverComponent.h": "a8f9f30d0ccbafd933d75e7cfec83a0bf6faf4721a14acd22d14cba3a2493871",
+        "Source/Mover/Public/DefaultMovementSet/ProneFloorData.h": "2337f857895bfce793c17748f9050dca0b7321ca97a9003e6a2522bbb2d485f1",
+        "Source/Mover/Public/DefaultMovementSet/Settings/CommonLegacyMovementSettings.h": "83dafaa7f463908a1723fe652e979b73f3e038ab68aadb5e46d552646ec94cdb",
+        "Source/Mover/Public/DefaultMovementSet/Settings/StanceSettings.h": "888bbece9fbe0f23060b363ec92f4440486ae808f8ba056bf8ae2ee00000353e",
+        "Source/Mover/Public/InputContainerStruct.h": "9d5a492c64855f87aaaf868565fbe5562c7d5a9769e499decb155e57b99de414",
+        "Source/Mover/Public/InstantMovementEffect.h": "45883f4c3c44d85d926a36eedad791ec0ca2bf02b9bf1841022bae30529dd499",
+        "Source/Mover/Public/KinematicActorSimulation.h": "d2c5696aca284431dfabe722cbe7176cdc1ee495dbf67245ebcd6c783eae5871",
+        "Source/Mover/Public/LayeredMove.h": "eab274992cbf38b058b176a6dfe1ecc5397a45b00c65d8c48636cfa54bfe6d54",
+        "Source/Mover/Public/LayeredMoveBase.h": "f5839f2b6e2eea422c333e1de438b9e36db472ae6ce6d7190814af419cc38482",
+        "Source/Mover/Public/LayeredMoveGroup.h": "a7f2847ce8128b7c874c99e09a6f26692a612f73b95e390d06c72791fcbf79e0",
+        "Source/Mover/Public/MotionWarpingMoverAdapter.h": "bc91253fdc97b6ff5f8069d6d6e9ea901adc093ad86ba5ddf2781aaefabd8c62",
+        "Source/Mover/Public/MoveLibrary/AirMovementUtils.h": "83b3b0dfcd5a203a196d674b8f48ab48dfb56894dd655db9e61685b50b7b2489",
+        "Source/Mover/Public/MoveLibrary/AsyncMovementUtils.h": "11ad7aa534c9c3009b7c1a34d356717e5c3ff910cbf01196f5b6da2d4d17d5bc",
+        "Source/Mover/Public/MoveLibrary/BasedMovementUtils.h": "f3a03a86a0295218fcc3100b2d04885870b6dae380ef2579357aef43de1f7e8a",
+        "Source/Mover/Public/MoveLibrary/ConstrainedMoveUtils.h": "2a79174b4a69ffd5d79eb81ec808e01734bc8bda8824bbef30740dd3f102133e",
+        "Source/Mover/Public/MoveLibrary/FloorQueryUtils.h": "e440a8e33661ca15774437b475306a45ae199584a5cbe0dac1c6c8900a892cbb",
+        "Source/Mover/Public/MoveLibrary/GroundMovementUtils.h": "7432ea33031c631c4b9eb48e3bc3c5e520ead5fd64a5b6490a8bc1d9b058f29f",
+        "Source/Mover/Public/MoveLibrary/ModularMovement.h": "a10bd4c393c81942e86bcf84a8ee2828a7d85c6123baa2caf0f4850bff4b23d0",
+        "Source/Mover/Public/MoveLibrary/MovementMixer.h": "bf7c8567420d7dd156487d439ef93aa265bb49d1fa096aacb67fcecbb870d96b",
+        "Source/Mover/Public/MoveLibrary/MovementRecord.h": "3e39c34895bbb1374032a5159ff305644100ef58bb74d0bac304d396d2f35b19",
+        "Source/Mover/Public/MoveLibrary/MovementRecordUtils.h": "6ee79f0e3b2a30fdb0fa79b1d2660b6670cadbce91c456c53b98f1b0659919c8",
+        "Source/Mover/Public/MoveLibrary/MovementUtils.h": "1df602c05d4bde9c51709f5e1a6ac461349f9e306ea0ce38cb4d3b9d15dbad73",
+        "Source/Mover/Public/MoveLibrary/MovementUtilsTypes.h": "e3395f53e724c6104f11ba6896a14456aa98fe9c3a1d9580039023bcf97ecc6a",
+        "Source/Mover/Public/MoveLibrary/MoverBlackboard.h": "beb41ca2edf3304f7e74d27fa236ebe45cdb86280924b892724193b2fbc2f871",
+        "Source/Mover/Public/MoveLibrary/PlayMoverMontageCallbackProxy.h": "59ede1398f4516097be46738075199ed6129cb32d9b67d1251c41b10e5e8a2f7",
+        "Source/Mover/Public/MoveLibrary/ProneFloorTraceUtils.h": "80b484bd88ce3e6aab0f1be6d479bdf70c6f039bf48c424cd4608f36e4f8f43b",
+        "Source/Mover/Public/MoveLibrary/RollbackBlackboard.h": "c3b7bcd4bb1aeeee12948ad9e87c8b2eb9a4c70d371df92e9bed679602e7df4a",
+        "Source/Mover/Public/MoveLibrary/RollbackBlackboardLibrary.h": "f7359bd8f0c28ce0d8b54ef1d097ff2e3b5cecf27f7bd38de025c4f732335c43",
+        "Source/Mover/Public/MoveLibrary/RollbackBlackboardWrappers.h": "b6694071f2b814ff5a273e0a15dafb329d675f8470074a6a1135fac7f270dcbf",
+        "Source/Mover/Public/MoveLibrary/RollbackCircularBuffer.h": "97d51ba60a39a65ccbf3fcdeaf63b2f5a63c15f2e9eaea5c56e2e66021cdd80f",
+        "Source/Mover/Public/MoveLibrary/WaterMovementUtils.h": "8940f56622c1ff9087bc6bc1daffe2cfd1028dacd66ba68e07d8a9c9a91162f7",
+        "Source/Mover/Public/MovementMode.h": "e60b504222831cbf4177a87d05a682d99973909186f84cfdcbf7cc9684877d43",
+        "Source/Mover/Public/MovementModeStateMachine.h": "c76c1906797afd9de87656cb557a8d3eefbdf5752b58676b9ff0bc62ef1d128d",
+        "Source/Mover/Public/MovementModeTransition.h": "345770d681eff289ad65a40bd6c6887020800473916b00f6326bfcb3d28bf800",
+        "Source/Mover/Public/MovementModifier.h": "d78f7952e69dbdc16debf48abada14b613bc041b1a11aefb313636a8c37ef2a6",
+        "Source/Mover/Public/MoverComponent.h": "389a7b6b95e01bd59ae2213c66cdfcad6014a858039c845aece08404e45e6f70",
+        "Source/Mover/Public/MoverDataModelTypes.h": "e93d9d0850cdc5d958e7a541975931d09cf488a391a99b4e0424e553ba3a2f85",
+        "Source/Mover/Public/MoverDeveloperSettings.h": "492e6c4c350c82bbd5faddaa5c6083f1ddbbdd7521a4eb2e020b005d10e6a806",
+        "Source/Mover/Public/MoverGameplayTagLog.h": "e3f8ae84d648787fd07c7a5dead5df3fbc6e953c29273727766fcbe08c53a890",
+        "Source/Mover/Public/MoverLog.h": "df9dbe3dbabc55ee9b8e07a48d4c1d7551871ee13b6b702305943659b6aaa569",
+        "Source/Mover/Public/MoverModule.h": "6066318c60c836f2356a9c25023b93a929b2f437d4921e9d9f9f764dec0b2ce3",
+        "Source/Mover/Public/MoverPoseSearchTrajectoryPredictor.h": "7f96147b164aa54780a31838c8814b1f5bde5e12838fa95fba5ec7d4ab7a4174",
+        "Source/Mover/Public/MoverSchedulingUtils.h": "4f1974173dbd2b2ef61a4f5f29aa23b0002541a69b0f0142a894baef1aba0331",
+        "Source/Mover/Public/MoverSimulation.h": "b37f2b823ec6e3641b897c4c46e22f170a574b7d4ad22bf08d6302d69ae89c15",
+        "Source/Mover/Public/MoverSimulationTypes.h": "766ff904c83c02df110d85aac9f00fa6db4775fe13f5f7729949f311f5e33386",
+        "Source/Mover/Public/MoverTypes.h": "5d00d207b8e90f5ec861a40d0200e6ca936fa012491bde050817fa1206b80eb1",
+        "Source/Mover/Public/UserDefinedStructSupport.h": "b991469b6cdceaf670093d582c3e9dd16453d184857968753f610ddb55bc8973",
+        "Source/MoverCVDData/MoverCVDData.Build.cs": "2f03f4ca132a385a0ca5130438fa1db99c55dcf564c57226b09be04968ecfe29",
+        "Source/MoverCVDData/Private/MoverCVDData.cpp": "922fa0fa0b01b3dec8db7c6f863844823cfe12c899651180928db1004fb206b6",
+        "Source/MoverCVDData/Private/MoverCVDDataWrappers.cpp": "6249f7ad4d7fe774b4e56f36c0a78147a02a27afde7be40fc38d195ce9650316",
+        "Source/MoverCVDData/Public/MoverCVDDataWrappers.h": "5465439e3ab4d062bd4a75803094024ea5415f0170f4dd8c2c4fd9ff6c80f8dc",
+        "Source/MoverCVDEditor/MoverCVDEditor.Build.cs": "9955975bdb5b998d29856aa8323aa25bb7f58e71ecf6d7c1226672a66f223740",
+        "Source/MoverCVDEditor/Private/MoverCVDEditor.cpp": "86b2a7a791ab36572ddde03772a4a170b4651c3624698b9c8b1b666c1a6b9e42",
+        "Source/MoverCVDEditor/Private/MoverCVDExtension.cpp": "2c0039dfb245c1352d0298cd91aee9c3dcce8c7405625620d718b4895d531a24",
+        "Source/MoverCVDEditor/Private/MoverCVDExtension.h": "b20190133375cb69271bf9689c9387acc526a5a0b08ab1b88446f11d8beee179",
+        "Source/MoverCVDEditor/Private/MoverCVDSimDataComponent.cpp": "b62ec7327e0ac0ae3adf78dee0f943fd248955792ee9607698a2baf92f1e45f2",
+        "Source/MoverCVDEditor/Private/MoverCVDSimDataComponent.h": "6cffb4d233c81f39df64a3057ed8d052ba5dfeddae7affd3e2c29736f06f26a2",
+        "Source/MoverCVDEditor/Private/MoverCVDSimDataProcessor.cpp": "07339ce590fe07efc23008dd009b404e45110d91ce6f8f4c7981c99ec1f2f128",
+        "Source/MoverCVDEditor/Private/MoverCVDSimDataProcessor.h": "45c989acb6a6adf8474ec62d49299f7b16dd93301814d14c50e0cd495aa9d504",
+        "Source/MoverCVDEditor/Private/MoverCVDSimDataSettings.cpp": "692176564ebe19913a5177cc7d1bd0454beb14cd3c8e61dea58bde5a390bac62",
+        "Source/MoverCVDEditor/Private/MoverCVDSimDataSettings.h": "19b0569afeb4119af1202c6b7688f16f8288106594f534781d244a93e7726340",
+        "Source/MoverCVDEditor/Private/MoverCVDStyle.cpp": "bb7b62a78a7ff72ce7764c10e95e05d6c6c831f79e21db3a8c7af83994a98c5d",
+        "Source/MoverCVDEditor/Private/MoverCVDStyle.h": "b9aeed98ff9fe22bd79a3c61bd5521e2732742d15e8e850cdac5ecb118e6dafa",
+        "Source/MoverCVDEditor/Private/MoverCVDTab.cpp": "928500723ec1a622fa2c6bd3e969a97c60ade4c288c7e82b83f5c51432d39865",
+        "Source/MoverCVDEditor/Private/MoverCVDTab.h": "82d962ddc5130b8df27c2ef5c43b6551dfae8d479d51d1706f0bb3ce4c03aa9f",
+        "Source/MoverCVDEditor/Public/MoverCVDEditor.h": "28dc5617307a9949769baadaea3a98f2a892b9cf177343c8ea8d8ec7690e19de",
+        "Source/MoverEditor/MoverEditor.Build.cs": "246a3ecad5c555b06edb76686a7e64f531be2fb8aa4cd466786770ce7bd1dc26",
+        "Source/MoverEditor/Private/K2Node_PlayMontageOnMoverActor.cpp": "5535dac0098080c45902273503fc1ae07cff76188a599c4c75eb8380cd124e1a",
+        "Source/MoverEditor/Private/MoverEditorModule.cpp": "6d621828e878f3cf9088881f1326a2c2b61b0de7d7fda68881ea63109258a94b",
+        "Source/MoverEditor/Public/K2Node_PlayMontageOnMoverActor.h": "9faef43624fb8b6100855bb831b5aef121e6de2cbd042961ed7b63d02f4ea438"
+      },
+      "assetInventory": []
+    },
+    "ChaosMover": {
+      "fileCount": 104,
+      "sourceAndConfigSha256": {
+        "ChaosMover.uplugin": "bad4926f24a445b0fd673d1843f33e9a1004d44372a3ec47750eb2941a25edb9",
+        "Config/DefaultChaosMover.ini": "7a42918c1d3b6567b26ebf19c8de7b0be4df752b6b64331bbd796567a23051d8",
+        "Source/ChaosMover/ChaosMover.Build.cs": "d1ae2057588be4618fbd4e22679da857e1f0e6db19e6c568369ca3c833df0d80",
+        "Source/ChaosMover/Private/Backends/ChaosMoverAsyncCallback.cpp": "2f2b152ece4c2fed1e2621d305a511bde6798c6c982caa6c242a32b463685854",
+        "Source/ChaosMover/Private/Backends/ChaosMoverAsyncCallback.h": "3cd94483e8e1fab7894dd2b27cf98afe6c1ea09a91b974ad79f9376e5e7bf8a6",
+        "Source/ChaosMover/Private/Backends/ChaosMoverBackend.cpp": "874575f4c6c463b6c371f351cd9cb6026831a8a6df420b195ecbc03d5df6f3c9",
+        "Source/ChaosMover/Private/Backends/ChaosMoverSubsystem.cpp": "11bb7ce09628cebd4b38ae0199469c76081e3e12d05089e80413e3944834fb83",
+        "Source/ChaosMover/Private/Backends/ChaosMoverSubsystem.h": "4ad6606f740ade862a35eb84484ec039324a2f215cf6fb4453e76ceadc8f2a80",
+        "Source/ChaosMover/Private/Backends/NetworkChaosMoverData.cpp": "4c5011cdbf3e658ab732374e790f9901fa2d8a9a1a10725c85a8d215f0f0d7c3",
+        "Source/ChaosMover/Private/Backends/NetworkChaosMoverData.h": "eff4791bd69b879682bea88a1a449ad6ecc6dc93ef8a86de4deabb740110335e",
+        "Source/ChaosMover/Private/ChaosCompositeMovementMode.cpp": "41e0b53e018a58a94dd4555eb7d4dea8fa5b778d6a540c7874175ab681cd9cd8",
+        "Source/ChaosMover/Private/ChaosLayeredMoveSource.cpp": "843c42faed9fa27c5af3fb85a194aec557381599a40dd04a395627fcbf0e94df",
+        "Source/ChaosMover/Private/ChaosMoveExecutorBase.cpp": "03ae9f31b743df34976aab5c904beb5cac7d88f5f4668ea13731807f9c83d55d",
+        "Source/ChaosMover/Private/ChaosMovementMode.cpp": "bb2d6ed1e8ac2b6401be304098396db700b2e720bbd2310f2e1082887939882b",
+        "Source/ChaosMover/Private/ChaosMovementModeTransition.cpp": "4a149937e8316884a23fe97263e299699f9138a8ead867cbae2103fe588a8192",
+        "Source/ChaosMover/Private/ChaosMoverActionTypes.cpp": "060457005915e027d7e16579bdc44e8ad695889f9e20f10896029a47f2a55694",
+        "Source/ChaosMover/Private/ChaosMoverBlueprintLibrary.cpp": "42318a73801188289d14ca5b9b206a97908ff4cbc37644096540ce1d929dbf8e",
+        "Source/ChaosMover/Private/ChaosMoverConsoleVariables.cpp": "10f93f4f7a97e068ff666791efe54bd8995008882d7c3a6259720f5833ed4206",
+        "Source/ChaosMover/Private/ChaosMoverLog.cpp": "58394b309f249a3267fd1492fbc8ba60d6e5350bb450253e66f71a3169554039",
+        "Source/ChaosMover/Private/ChaosMoverModule.cpp": "39639d79b8750196ac7c32b4f2b6256b45cf694fd1ac81c9943479e3e84fda6c",
+        "Source/ChaosMover/Private/ChaosMoverSimulation.cpp": "40c936ddb714fc30cb8e368de85750d4e214c794514f5cba6e060b3c4b72c20d",
+        "Source/ChaosMover/Private/ChaosMoverSimulationTypes.cpp": "ca260f0deb05142c91c00ab9e50d448e6abbb1455ff02b1cf0b9f2384216641b",
+        "Source/ChaosMover/Private/ChaosMoverSourceBase.cpp": "5034d28b8fd585ea7d876cdbe5ed07aefbc5db1b36e4f18760878a00bcb88623",
+        "Source/ChaosMover/Private/ChaosMoverStateMachine.cpp": "4ac18fcf1b6c33346528ae577806bb5893d30d43474280682ff8c1dd5bc88fb9",
+        "Source/ChaosMover/Private/Character/ChaosCharacterInputs.cpp": "a6301a9693854ddfa52c42fce9ece553ecabf92d6dff32f47084062680b29319",
+        "Source/ChaosMover/Private/Character/ChaosCharacterMoverComponent.cpp": "c3f9b54541c7e54217ea9cc03ebd7db5d998c9c7ab9f0697c6e31cc05b44c24b",
+        "Source/ChaosMover/Private/Character/ChaosCharacterSimUtils.cpp": "ae701a2a843e86ed713ade063c49533064dbc3f38ec56f2616eeda4c197e98d7",
+        "Source/ChaosMover/Private/Character/ChaosCharacterSimUtils.h": "66bc5bcd8dc8759efe7af5c1bbdaf7fd997179076f56b6ef834bcef6223902be",
+        "Source/ChaosMover/Private/Character/Effects/ChaosCharacterApplyVelocityEffect.cpp": "4b142ffb594bec6f59e0f8257324f45fefac9305ba3a2d4e3f91b660e6a71cdc",
+        "Source/ChaosMover/Private/Character/Executors/ChaosCharacterAirExecutor.cpp": "cc29dfa4f49ce113d89234619b234e519cf7051dc634a17a00d2a349914029a9",
+        "Source/ChaosMover/Private/Character/Executors/ChaosCharacterWalkingExecutor.cpp": "c16bacac92668651f42b2d82174537984908664f3bbef7d1568ff666797edcd5",
+        "Source/ChaosMover/Private/Character/Modes/ChaosCharacterMovementMode.cpp": "e783244b41cb66837a499a34fd88a2c6b104baefe775696f14ab003619c5c3e0",
+        "Source/ChaosMover/Private/Character/Modes/ChaosFallingMode.cpp": "a5723a6c91082e5258dde0746baccfd5832b0b9d7c1dab17b2977ed23c418716",
+        "Source/ChaosMover/Private/Character/Modes/ChaosFlyingMode.cpp": "61bb1db0d3d41a17910a5ea02e9a4461957778b0f38075fb9ed18562c8e991a0",
+        "Source/ChaosMover/Private/Character/Modes/ChaosSimpleWalkingMode.cpp": "84c86a02c123dd098992c89db7c590b8b0b3985f1bf4d8d939166f2d6b9dd4e4",
+        "Source/ChaosMover/Private/Character/Modes/ChaosSmoothWalkingMode.cpp": "51d9503b76ae83d43d90160c44c2f98b9d77b3f9a2713d1c4189e5d64fb75749",
+        "Source/ChaosMover/Private/Character/Modes/ChaosSmoothWalkingState.cpp": "e900ad66b9ef6e01e7dffcb1b3022b5f85fc0957e89bf756fe2d31e4461e7dcb",
+        "Source/ChaosMover/Private/Character/Modes/ChaosSmoothWalkingState.h": "25cc29945f9f421d34dae78df593f28ff37a1f9f7fd158236e7f202713256504",
+        "Source/ChaosMover/Private/Character/Modes/ChaosSwimmingMode.cpp": "bf3148dd71aa882b8b30c780656dfd475a8a8114cfb8645cd9463033000af2c5",
+        "Source/ChaosMover/Private/Character/Modes/ChaosWalkingMode.cpp": "b06206bb05b4e8a5b243bbd46c48eaa18061c7ffeb0afd8fb54ebc2b92430ec8",
+        "Source/ChaosMover/Private/Character/Modifiers/ChaosStanceModifier.cpp": "b2f1e25a02463d31bc77754cd449e951ba03574824a7636e87b3e1187ee19fce",
+        "Source/ChaosMover/Private/Character/Transitions/ChaosCharacterCrouchCheck.cpp": "bd09896e47a35b82a98b5eb2046f6235841bd33feb4da014c3cfffd190666988",
+        "Source/ChaosMover/Private/Character/Transitions/ChaosCharacterFallingCheck.cpp": "19cc8689cc070848d7ee11fd66785e8817c5015477301ed3fce3e785e407bf9a",
+        "Source/ChaosMover/Private/Character/Transitions/ChaosCharacterJumpCheck.cpp": "3cce0d8f2379544f0f7e402d0f22106cbd2a2a40750281e0410abf10b4e34ad6",
+        "Source/ChaosMover/Private/Character/Transitions/ChaosCharacterLandingCheck.cpp": "2069bbc8be529dc434198b0f5a775c0ebc323ea1c685922b650084598e163c1b",
+        "Source/ChaosMover/Private/Character/Transitions/ChaosCharacterLaunchCheck.cpp": "68e31938baec592d8131e72a2951790d69a8a6df01419a85d20f88683e85ace4",
+        "Source/ChaosMover/Private/Character/Transitions/ChaosCharacterWaterCheck.cpp": "d1e882ff266de7088051a1212acbd515cd906a215f331c965da5734757976852",
+        "Source/ChaosMover/Private/PathedMovement/ChaosEllipticalMovementPathPattern.cpp": "f35c25458b216457e2405a9729b78f73807c7420ece38e9b5da09d881ea14b5c",
+        "Source/ChaosMover/Private/PathedMovement/ChaosPathedMovementControllerComponent.cpp": "8d331abbeebc92c20cb44107fe41244df89d28523a5b36d12df1d584d9afecab",
+        "Source/ChaosMover/Private/PathedMovement/ChaosPathedMovementDebugDrawComponent.cpp": "458ddb5cb947985e2f2e7eeeea09cd9b52e9cfc10bfef6e44fabf9764b22a6bd",
+        "Source/ChaosMover/Private/PathedMovement/ChaosPathedMovementMode.cpp": "3386f5e80f90523156bf6d69e5e811a1ce8862411ba9953dcbd34fc933f740eb",
+        "Source/ChaosMover/Private/PathedMovement/ChaosPathedMovementPatternBase.cpp": "e68afafeec49410749b0a7010402591bf9f368d14a7b9d9c3a5f3d6d51b46ad4",
+        "Source/ChaosMover/Private/PathedMovement/ChaosPathedMovementTypes.cpp": "995288392fe76201d12fc3f51c6c178db78f4d0a27691fb402d0f2ee846aedb1",
+        "Source/ChaosMover/Private/PathedMovement/ChaosPointMovementPathPattern.cpp": "6772212ffde8794e9fdc6c83cdc248126aaaef1a790f5915d75f98732e147faf",
+        "Source/ChaosMover/Private/PathedMovement/ChaosSplineMovementPathPattern.cpp": "441b49d1c2a2fe2e911fe74ec8c5a7a09b3b9ae16d703f60008aa3536374f3d2",
+        "Source/ChaosMover/Private/PathedMovement/Transitions/ChaosPathedMovementReachedEndTransition.cpp": "d78751d7fca09bcc6eb100c892551d07c3ec7c8f1384650d75125fddb422c9d6",
+        "Source/ChaosMover/Private/Utilities/ChaosGroundMovementUtils.cpp": "6b56b68772c562c63b4a0cc4a8ad572671ae3a578507dac2f050831ea44e269d",
+        "Source/ChaosMover/Private/Utilities/ChaosMoverQueryUtils.cpp": "9b9ebfc24c375e013b371958e2d7965e9d30010a9eda5695d845e8c8eddcc36b",
+        "Source/ChaosMover/Public/ChaosMover/Backends/ChaosMoverBackend.h": "07de82415dfdd8e9f278e0fe97a8d606ac2e971c1b2b34f8545eb41bc5db6954",
+        "Source/ChaosMover/Public/ChaosMover/ChaosCompositeMovementMode.h": "941b8967e90250a7021b14cdba3cffc2e0fd7a4e6ef5ac81949c42db53d2ab8b",
+        "Source/ChaosMover/Public/ChaosMover/ChaosLayeredMoveSource.h": "497abadab77186e50d20a8fd640e32a4d77d0b86d49ec7dd94a6c11f59b479fd",
+        "Source/ChaosMover/Public/ChaosMover/ChaosMoveExecutorBase.h": "c9fadb187620a49e641e0e37ce08f2ddab07f21b1dc829dbbe6f5c438ce3dac3",
+        "Source/ChaosMover/Public/ChaosMover/ChaosMovementMode.h": "a7857ee062e17f95ae11f201929ba38ca86adb158ec0d8a427a83f2ce0606b05",
+        "Source/ChaosMover/Public/ChaosMover/ChaosMovementModeTransition.h": "c9aebd22bf738b87827b39616d11de5ceb01087018719cb89cc063a71db96212",
+        "Source/ChaosMover/Public/ChaosMover/ChaosMoverActionTypes.h": "5e22da0f4d517662400933c3b9d458a3442f3f35026726650beb253492cc73f5",
+        "Source/ChaosMover/Public/ChaosMover/ChaosMoverBlueprintLibrary.h": "e73db52c116f8cf45affcf0eef57804bc6ad8fa8a60121be99120f073d3aad16",
+        "Source/ChaosMover/Public/ChaosMover/ChaosMoverConsoleVariables.h": "a3c365fa664c283bb330cf76e08c70d2fd44346238fc6a64f9c71401f3325bc5",
+        "Source/ChaosMover/Public/ChaosMover/ChaosMoverDefines.h": "c041c5d72a0fde9eea40fa27059690b8680c3e30b1386ca1d2dd8a8ac729581b",
+        "Source/ChaosMover/Public/ChaosMover/ChaosMoverLog.h": "cbd978c8a34ce12d76679d6e284dcbc312ecda011dabeae5f7fdf6d2b6e7763d",
+        "Source/ChaosMover/Public/ChaosMover/ChaosMoverSimulation.h": "426cc22f20d407d6745f6d740508aa015d55912be7a5c762f3cdfd8d58eae832",
+        "Source/ChaosMover/Public/ChaosMover/ChaosMoverSimulationTypes.h": "5c3ee1ce2ca456a2fb337a7c95226c9dce4d96f483e365ab4ac0bf355c3ffbf3",
+        "Source/ChaosMover/Public/ChaosMover/ChaosMoverSourceBase.h": "11215c4e4b41e53226c355a9714dbe6bd2c356a4c76c526b397c5df2cb098137",
+        "Source/ChaosMover/Public/ChaosMover/ChaosMoverStateMachine.h": "02867889809a95eb59ea5e2b07668780dce81e0b226126052bb1c48e47924e79",
+        "Source/ChaosMover/Public/ChaosMover/Character/ChaosCharacterInputs.h": "25fa640dcbd3d1948f889c9823f9715760c95bddf0bc6e952333d036eaef3dae",
+        "Source/ChaosMover/Public/ChaosMover/Character/ChaosCharacterMoverComponent.h": "3c4c20be9c3e3489a48d06c98bf64f0bccc6565c8eeae1aa902e93b76ab2c1a9",
+        "Source/ChaosMover/Public/ChaosMover/Character/Effects/ChaosCharacterApplyVelocityEffect.h": "9504abba48b667f2f686738368bfe436afb1a9d96c35e74721795137b0936a20",
+        "Source/ChaosMover/Public/ChaosMover/Character/Executors/ChaosCharacterAirExecutor.h": "3c68cbf04f5348fc0ba74f2f4d642e516d63b97b265aadc2fe4a79f8deebfec2",
+        "Source/ChaosMover/Public/ChaosMover/Character/Executors/ChaosCharacterWalkingExecutor.h": "f8aa3151af7402304f848ad2634612f46b588d28f4a0dc9b5c63c81f5cb30d25",
+        "Source/ChaosMover/Public/ChaosMover/Character/Modes/ChaosCharacterMovementMode.h": "1644c71b9ed6d6373aba74ab814ef591990508b369342ec9ac5fcdda924fdbc8",
+        "Source/ChaosMover/Public/ChaosMover/Character/Modes/ChaosFallingMode.h": "63a7ebd01e0ee6b6a94f702cb84e1ce5efa306a04e4697d26c0311f32c0de53b",
+        "Source/ChaosMover/Public/ChaosMover/Character/Modes/ChaosFlyingMode.h": "5c0051b5ba325e51bb287f24cadcd9063f4b96e1d3108577182f164a05c56f38",
+        "Source/ChaosMover/Public/ChaosMover/Character/Modes/ChaosSimpleWalkingMode.h": "f04f317b0a44b82f9f707844a40824a03444a2ab01ea2f128d5a3555ca65ffd0",
+        "Source/ChaosMover/Public/ChaosMover/Character/Modes/ChaosSmoothWalkingMode.h": "416f96aa90a588c6f95e912408d0e7527e8f4963670d720bbd2c35df3fc8711a",
+        "Source/ChaosMover/Public/ChaosMover/Character/Modes/ChaosSwimmingMode.h": "d6f06d8bfe4f96ef017f1532ff67209988c16c735705f98f91437a12fa2378ed",
+        "Source/ChaosMover/Public/ChaosMover/Character/Modes/ChaosWalkingMode.h": "4c5b23b0f3502a346386c97526a4dff192b409d7819e9d3350a6a2ac4e6479c8",
+        "Source/ChaosMover/Public/ChaosMover/Character/Modifiers/ChaosStanceModifier.h": "d1f078464c4d5fba9d355b377d20b6010132829ef09c326109bd17ed537a4dfe",
+        "Source/ChaosMover/Public/ChaosMover/Character/Settings/SharedChaosCharacterMovementSettings.h": "821268cec2cd2535d810ce393d4a42b9a1ce9b7cd901c0f6d3ba510c12c3c695",
+        "Source/ChaosMover/Public/ChaosMover/Character/Transitions/ChaosCharacterCrouchCheck.h": "741699afbf688781db82ff424e52f741e72f9a87fceab2147ff9ccfe859c9dcb",
+        "Source/ChaosMover/Public/ChaosMover/Character/Transitions/ChaosCharacterFallingCheck.h": "37b36085e3248990b201196378a9471b47d3fbedf46f8c701d0cbbdcad12e81f",
+        "Source/ChaosMover/Public/ChaosMover/Character/Transitions/ChaosCharacterJumpCheck.h": "b01be37e5b8bf99535491c52c01b5de2fc4f7f8bcf4fbe38c024b703ee38588e",
+        "Source/ChaosMover/Public/ChaosMover/Character/Transitions/ChaosCharacterLandingCheck.h": "69e0353c50a6b08ad284576a45282b10186b42a93cf1536c416387051d8c84d7",
+        "Source/ChaosMover/Public/ChaosMover/Character/Transitions/ChaosCharacterLaunchCheck.h": "f5c4e3de4ded30e5111dcd192d618bfb1b1186ec349d888feca4218b858a2335",
+        "Source/ChaosMover/Public/ChaosMover/Character/Transitions/ChaosCharacterWaterCheck.h": "239bf4b1bb4bc8fd748c6ecda10382e4354415f58c6922aa89f51deb00dcadd2",
+        "Source/ChaosMover/Public/ChaosMover/PathedMovement/ChaosEllipticalMovementPathPattern.h": "cb7ac9c48c82a3fb501eebb98e29974fc5e4172cebfc9cfa50c7d9bad07fa0d6",
+        "Source/ChaosMover/Public/ChaosMover/PathedMovement/ChaosPathedMovementControllerComponent.h": "fe0396684193ef1f062f5f604896e0048e979ece23f2d59bbc689825ed0c3b67",
+        "Source/ChaosMover/Public/ChaosMover/PathedMovement/ChaosPathedMovementDebugDrawComponent.h": "0fcc7b63d42eda40447c075edb7c19bd03412790f474b9baf7b8b4edde5a7859",
+        "Source/ChaosMover/Public/ChaosMover/PathedMovement/ChaosPathedMovementMode.h": "0eed8bcc41dfaf6f1dcc0b525d1b6c923fee6a3751b73b23a7df12134ec18d27",
+        "Source/ChaosMover/Public/ChaosMover/PathedMovement/ChaosPathedMovementPatternBase.h": "25bc2a139b22c675abcd0f36b0e2a18f1a8ba7991d6df13aa7a76dc2d2ebdd46",
+        "Source/ChaosMover/Public/ChaosMover/PathedMovement/ChaosPathedMovementTypes.h": "3fb28112e5c7bf8f393b505bb6f05eef0b7f6a91b6b0233d68c791d1ab1edcf8",
+        "Source/ChaosMover/Public/ChaosMover/PathedMovement/ChaosPointMovementPathPattern.h": "605bb82b2d9b30c75115ca6e04b2de20a04eca3a8a2a0493a1b1c59ac950e090",
+        "Source/ChaosMover/Public/ChaosMover/PathedMovement/ChaosSplineMovementPathPattern.h": "2aa1dcca3f5ee408b39f3b309e908c08bf540f3faae64ed16b3172d2146cf368",
+        "Source/ChaosMover/Public/ChaosMover/PathedMovement/Transitions/ChaosPathedMovementReachedEndTransition.h": "c99d6086f421ce77a5d68ff0c5c42ba7ab42cb19bc93e42cfddbb1a74266850a",
+        "Source/ChaosMover/Public/ChaosMover/Utilities/ChaosGroundMovementUtils.h": "749aec4760b86e105966a1078629846613f71d55f9ecf084ca8d3bb634d66ed3",
+        "Source/ChaosMover/Public/ChaosMover/Utilities/ChaosMoverQueryUtils.h": "5e93c7a7763ff32089076d77cbeebc890a5576e6d1524af1fe1e0ac755b8ffec"
+      },
+      "assetInventory": []
+    },
+    "MoverExamples": {
+      "fileCount": 205,
+      "sourceAndConfigSha256": {
+        "MoverExamples.uplugin": "9d479dad854e521a1749ae301d9127cffe7dca6e82b1bd1213661444a27b6ed0",
+        "Source/MoverExamples/MoverExamples.Build.cs": "f0c8ac4c22eec0b21d5f194c6326102c008fa9b6c3dfcab03820608307148d57",
+        "Source/MoverExamples/Private/CharacterVariants/Ziplining/ZipliningMode.cpp": "d1af1ff411f4bf9a79fb75a5f2e0b206ef4de0365f94db164953b6383adf9433",
+        "Source/MoverExamples/Private/CharacterVariants/Ziplining/ZipliningTransitions.cpp": "ebf97ab9b7ec3d99687c6f888cdcff33497fddda7620cc285c17d6b8aa523d8d",
+        "Source/MoverExamples/Private/MovementBases/FollowPathMode.cpp": "d58a59971b5bf6cf2ca5a0073e8471573572a247a862af484fdea851190d6fff",
+        "Source/MoverExamples/Private/MovementBases/FollowSplineMode.cpp": "44404356ebb76f4f503164721612d5aaa171465267d9e095db263fc59abb0ec1",
+        "Source/MoverExamples/Private/MoverExamplesCharacter.cpp": "e49d3f922f2ee1acefba09ce8321f809b5bb4cbb29c15d859161ceb4416e5858",
+        "Source/MoverExamples/Private/MoverExamplesGameMode.cpp": "eb4189a5e9045c1c377e21d12fe2bad2dbe91b320a3b4a8af3791c5a035660b7",
+        "Source/MoverExamples/Private/MoverExamplesModule.cpp": "58a21605c7888430bcb1d301a910a5205531b04e52036bf4370e2aea1dfa8027",
+        "Source/MoverExamples/Public/CharacterVariants/AbilityInputs.h": "00401e11fa32d2126ed145996de860be563edca6a10481c1c0e2befe036fdd52",
+        "Source/MoverExamples/Public/CharacterVariants/Ziplining/ZiplineInterface.h": "ed1eb75a972966c65d6570913d0da3cdcc31ebfe52dc38ca5687926034ffd267",
+        "Source/MoverExamples/Public/CharacterVariants/Ziplining/ZipliningMode.h": "15f8f544085fd982dd6fbbfc106c4051b063ac5e899dccf9de2d2f9a32788359",
+        "Source/MoverExamples/Public/CharacterVariants/Ziplining/ZipliningTransitions.h": "a1e5fc7e23c06a6f1c5105720f479b4b6948448bfeba908dd1368863cec27ae9",
+        "Source/MoverExamples/Public/MovementBases/FollowPathMode.h": "ff14c6fd486a70e1d93c5fb10c76fdbf143b10ed85a7cc5389236fc6b5aa5b57",
+        "Source/MoverExamples/Public/MovementBases/FollowSplineMode.h": "2ed20ded9a87f22987e78eb3a516dd5e6e16e1432d3403959dbe3a0c83037862",
+        "Source/MoverExamples/Public/MoverExamplesCharacter.h": "7aa83560b48a87e0df3d77aa5f5721bc51bb4c2582d1161cb5877575fef779fc",
+        "Source/MoverExamples/Public/MoverExamplesGameMode.h": "7266a5c24be2a43c7d64898b7bd0874d2a7def08f004371d55e913bf0b674588",
+        "Source/MoverExamples/Public/MoverExamplesGameState.h": "813ce334bd3f1b7070b9b2235bed416cf216af49d61ac0717bdaa5fec547dba8",
+        "Source/MoverExamples/Public/MoverExamplesModule.h": "4578d6f88aea2da545e0b56f7d27bb6ea210ae5f6d2d1ed19d93f31384f462de"
+      },
+      "assetInventory": [
+        {
+          "path": "Content/Characters/Mannequins/Animations/ABP_Manny.uasset",
+          "bytes": 550158
+        },
+        {
+          "path": "Content/Characters/Mannequins/Animations/ABP_MannyExtended.uasset",
+          "bytes": 892088
+        },
+        {
+          "path": "Content/Characters/Mannequins/Animations/Manny/BS_MM_CrouchStrafe.uasset",
+          "bytes": 13981
+        },
+        {
+          "path": "Content/Characters/Mannequins/Animations/Manny/BS_MM_WalkRun.uasset",
+          "bytes": 8988
+        },
+        {
+          "path": "Content/Characters/Mannequins/Animations/Manny/BS_MM_WalkRunStrafe.uasset",
+          "bytes": 14374
+        },
+        {
+          "path": "Content/Characters/Mannequins/Animations/Manny/MF_Unarmed_Jog_Bwd.uasset",
+          "bytes": 870303
+        },
+        {
+          "path": "Content/Characters/Mannequins/Animations/Manny/MF_Unarmed_Jog_Fwd.uasset",
+          "bytes": 593418
+        },
+        {
+          "path": "Content/Characters/Mannequins/Animations/Manny/MF_Unarmed_Jog_Left.uasset",
+          "bytes": 549564
+        },
+        {
+          "path": "Content/Characters/Mannequins/Animations/Manny/MF_Unarmed_Jog_Right.uasset",
+          "bytes": 587083
+        },
+        {
+          "path": "Content/Characters/Mannequins/Animations/Manny/MM_Dash_Backward.uasset",
+          "bytes": 300702
+        },
+        {
+          "path": "Content/Characters/Mannequins/Animations/Manny/MM_Dash_Backward_Montage.uasset",
+          "bytes": 9197
+        },
+        {
+          "path": "Content/Characters/Mannequins/Animations/Manny/MM_Dash_Forward.uasset",
+          "bytes": 305807
+        },
+        {
+          "path": "Content/Characters/Mannequins/Animations/Manny/MM_Dash_Forward_Montage.uasset",
+          "bytes": 8676
+        },
+        {
+          "path": "Content/Characters/Mannequins/Animations/Manny/MM_Dash_Left.uasset",
+          "bytes": 261946
+        },
+        {
+          "path": "Content/Characters/Mannequins/Animations/Manny/MM_Dash_Left_Montage.uasset",
+          "bytes": 9145
+        },
+        {
+          "path": "Content/Characters/Mannequins/Animations/Manny/MM_Dash_Right.uasset",
+          "bytes": 260906
+        },
+        {
+          "path": "Content/Characters/Mannequins/Animations/Manny/MM_Dash_Right_Montage.uasset",
+          "bytes": 9115
+        },
+        {
+          "path": "Content/Characters/Mannequins/Animations/Manny/MM_Death_Front_03_ExtractedRM.uasset",
+          "bytes": 151705
+        },
+        {
+          "path": "Content/Characters/Mannequins/Animations/Manny/MM_Death_Front_03_ExtractedRM_Montage.uasset",
+          "bytes": 9163
+        },
+        {
+          "path": "Content/Characters/Mannequins/Animations/Manny/MM_Fall_Loop.uasset",
+          "bytes": 698392
+        },
+        {
+          "path": "Content/Characters/Mannequins/Animations/Manny/MM_Fly_Loop.uasset",
+          "bytes": 985326
+        },
+        {
+          "path": "Content/Characters/Mannequins/Animations/Manny/MM_Idle.uasset",
+          "bytes": 897587
+        },
+        {
+          "path": "Content/Characters/Mannequins/Animations/Manny/MM_Jump.uasset",
+          "bytes": 291091
+        },
+        {
+          "path": "Content/Characters/Mannequins/Animations/Manny/MM_Land.uasset",
+          "bytes": 300363
+        },
+        {
+          "path": "Content/Characters/Mannequins/Animations/Manny/MM_Run_Fwd.uasset",
+          "bytes": 293318
+        },
+        {
+          "path": "Content/Characters/Mannequins/Animations/Manny/MM_Unarmed_Crouch_Entry.uasset",
+          "bytes": 271096
+        },
+        {
+          "path": "Content/Characters/Mannequins/Animations/Manny/MM_Unarmed_Crouch_Exit.uasset",
+          "bytes": 295468
+        },
+        {
+          "path": "Content/Characters/Mannequins/Animations/Manny/MM_Unarmed_Crouch_Idle.uasset",
+          "bytes": 1713562
+        },
+        {
+          "path": "Content/Characters/Mannequins/Animations/Manny/MM_Unarmed_Crouch_Walk_Bwd.uasset",
+          "bytes": 418537
+        },
+        {
+          "path": "Content/Characters/Mannequins/Animations/Manny/MM_Unarmed_Crouch_Walk_Fwd.uasset",
+          "bytes": 415376
+        },
+        {
+          "path": "Content/Characters/Mannequins/Animations/Manny/MM_Unarmed_Crouch_Walk_Left.uasset",
+          "bytes": 423479
+        },
+        {
+          "path": "Content/Characters/Mannequins/Animations/Manny/MM_Unarmed_Crouch_Walk_Right.uasset",
+          "bytes": 334212
+        },
+        {
+          "path": "Content/Characters/Mannequins/Animations/Manny/MM_Walk_Fwd.uasset",
+          "bytes": 382720
+        },
+        {
+          "path": "Content/Characters/Mannequins/Animations/Manny/MM_Walk_InPlace.uasset",
+          "bytes": 609217
+        },
+        {
+          "path": "Content/Characters/Mannequins/Animations/Manny/MM_Zipline_Loop.uasset",
+          "bytes": 971258
+        },
+        {
+          "path": "Content/Characters/Mannequins/Animations/Manny/VaultOver.uasset",
+          "bytes": 771252
+        },
+        {
+          "path": "Content/Characters/Mannequins/Animations/Manny/VaultOver_Montage.uasset",
+          "bytes": 14781
+        },
+        {
+          "path": "Content/Characters/Mannequins/Materials/Functions/CA_Mannequin.uasset",
+          "bytes": 4904
+        },
+        {
+          "path": "Content/Characters/Mannequins/Materials/Functions/ChromaticCurve_Mannequin.uasset",
+          "bytes": 6388
+        },
+        {
+          "path": "Content/Characters/Mannequins/Materials/Functions/MF_Diffraction.uasset",
+          "bytes": 32022
+        },
+        {
+          "path": "Content/Characters/Mannequins/Materials/Functions/MF_logo3layers.uasset",
+          "bytes": 55068
+        },
+        {
+          "path": "Content/Characters/Mannequins/Materials/Functions/ML_BaseColorFallOff.uasset",
+          "bytes": 13437
+        },
+        {
+          "path": "Content/Characters/Mannequins/Materials/Instances/Manny/MI_Manny_01.uasset",
+          "bytes": 19538
+        },
+        {
+          "path": "Content/Characters/Mannequins/Materials/Instances/Manny/MI_Manny_02.uasset",
+          "bytes": 20777
+        },
+        {
+          "path": "Content/Characters/Mannequins/Materials/M_Mannequin.uasset",
+          "bytes": 82049
+        },
+        {
+          "path": "Content/Characters/Mannequins/Meshes/SKM_Manny_Simple.uasset",
+          "bytes": 15827053
+        },
+        {
+          "path": "Content/Characters/Mannequins/Meshes/SK_Mannequin.uasset",
+          "bytes": 161428
+        },
+        {
+          "path": "Content/Characters/Mannequins/Rigs/CR_Mannequin_BasicFootIK.uasset",
+          "bytes": 675387
+        },
+        {
+          "path": "Content/Characters/Mannequins/Rigs/CR_Mannequin_Body.uasset",
+          "bytes": 13893595
+        },
+        {
+          "path": "Content/Characters/Mannequins/Rigs/CR_Mannequin_Procedural.uasset",
+          "bytes": 2352732
+        },
+        {
+          "path": "Content/Characters/Mannequins/Rigs/IK_Mannequin.uasset",
+          "bytes": 89301
+        },
+        {
+          "path": "Content/Characters/Mannequins/Rigs/PA_Mannequin.uasset",
+          "bytes": 64197
+        },
+        {
+          "path": "Content/Characters/Mannequins/Rigs/Poses/Manny/Manny_calf_l_anim.uasset",
+          "bytes": 141412
+        },
+        {
+          "path": "Content/Characters/Mannequins/Rigs/Poses/Manny/Manny_calf_l_pose.uasset",
+          "bytes": 207230
+        },
+        {
+          "path": "Content/Characters/Mannequins/Rigs/Poses/Manny/Manny_calf_r_anim.uasset",
+          "bytes": 141343
+        },
+        {
+          "path": "Content/Characters/Mannequins/Rigs/Poses/Manny/Manny_calf_r_pose.uasset",
+          "bytes": 207230
+        },
+        {
+          "path": "Content/Characters/Mannequins/Rigs/Poses/Manny/Manny_clavicle_l_anim.uasset",
+          "bytes": 141493
+        },
+        {
+          "path": "Content/Characters/Mannequins/Rigs/Poses/Manny/Manny_clavicle_l_pose.uasset",
+          "bytes": 205524
+        },
+        {
+          "path": "Content/Characters/Mannequins/Rigs/Poses/Manny/Manny_clavicle_r_anim.uasset",
+          "bytes": 141452
+        },
+        {
+          "path": "Content/Characters/Mannequins/Rigs/Poses/Manny/Manny_clavicle_r_pose.uasset",
+          "bytes": 206126
+        },
+        {
+          "path": "Content/Characters/Mannequins/Rigs/Poses/Manny/Manny_foot_l_anim.uasset",
+          "bytes": 129444
+        },
+        {
+          "path": "Content/Characters/Mannequins/Rigs/Poses/Manny/Manny_foot_l_pose.uasset",
+          "bytes": 131976
+        },
+        {
+          "path": "Content/Characters/Mannequins/Rigs/Poses/Manny/Manny_foot_r_anim.uasset",
+          "bytes": 129479
+        },
+        {
+          "path": "Content/Characters/Mannequins/Rigs/Poses/Manny/Manny_foot_r_pose.uasset",
+          "bytes": 131976
+        },
+        {
+          "path": "Content/Characters/Mannequins/Rigs/Poses/Manny/Manny_hand_l_anim.uasset",
+          "bytes": 135545
+        },
+        {
+          "path": "Content/Characters/Mannequins/Rigs/Poses/Manny/Manny_hand_l_pose.uasset",
+          "bytes": 169006
+        },
+        {
+          "path": "Content/Characters/Mannequins/Rigs/Poses/Manny/Manny_hand_r_anim.uasset",
+          "bytes": 135546
+        },
+        {
+          "path": "Content/Characters/Mannequins/Rigs/Poses/Manny/Manny_hand_r_pose.uasset",
+          "bytes": 169006
+        },
+        {
+          "path": "Content/Characters/Mannequins/Rigs/Poses/Manny/Manny_lowerarm_l_anim.uasset",
+          "bytes": 165798
+        },
+        {
+          "path": "Content/Characters/Mannequins/Rigs/Poses/Manny/Manny_lowerarm_l_pose.uasset",
+          "bytes": 361436
+        },
+        {
+          "path": "Content/Characters/Mannequins/Rigs/Poses/Manny/Manny_lowerarm_r_anim.uasset",
+          "bytes": 165390
+        },
+        {
+          "path": "Content/Characters/Mannequins/Rigs/Poses/Manny/Manny_lowerarm_r_pose.uasset",
+          "bytes": 361436
+        },
+        {
+          "path": "Content/Characters/Mannequins/Rigs/Poses/Manny/Manny_thigh_l_anim.uasset",
+          "bytes": 195370
+        },
+        {
+          "path": "Content/Characters/Mannequins/Rigs/Poses/Manny/Manny_thigh_l_pose.uasset",
+          "bytes": 557770
+        },
+        {
+          "path": "Content/Characters/Mannequins/Rigs/Poses/Manny/Manny_thigh_r_anim.uasset",
+          "bytes": 195546
+        },
+        {
+          "path": "Content/Characters/Mannequins/Rigs/Poses/Manny/Manny_thigh_r_pose.uasset",
+          "bytes": 557770
+        },
+        {
+          "path": "Content/Characters/Mannequins/Rigs/Poses/Manny/Manny_upperarm_l_anim.uasset",
+          "bytes": 207241
+        },
+        {
+          "path": "Content/Characters/Mannequins/Rigs/Poses/Manny/Manny_upperarm_l_pose.uasset",
+          "bytes": 641425
+        },
+        {
+          "path": "Content/Characters/Mannequins/Rigs/Poses/Manny/Manny_upperarm_r_anim.uasset",
+          "bytes": 207444
+        },
+        {
+          "path": "Content/Characters/Mannequins/Rigs/Poses/Manny/Manny_upperarm_r_pose.uasset",
+          "bytes": 629987
+        },
+        {
+          "path": "Content/Characters/Mannequins/Rigs/RTG_Mannequin.uasset",
+          "bytes": 14229
+        },
+        {
+          "path": "Content/Characters/Mannequins/Textures/Manny/T_Manny_01_ASAOPMASK_MSK.uasset",
+          "bytes": 3612605
+        },
+        {
+          "path": "Content/Characters/Mannequins/Textures/Manny/T_Manny_01_BN.uasset",
+          "bytes": 18514168
+        },
+        {
+          "path": "Content/Characters/Mannequins/Textures/Manny/T_Manny_01_CCRCCPlastic_MSK.uasset",
+          "bytes": 10271972
+        },
+        {
+          "path": "Content/Characters/Mannequins/Textures/Manny/T_Manny_01_D.uasset",
+          "bytes": 5740376
+        },
+        {
+          "path": "Content/Characters/Mannequins/Textures/Manny/T_Manny_01_MSR_MSK.uasset",
+          "bytes": 11038184
+        },
+        {
+          "path": "Content/Characters/Mannequins/Textures/Manny/T_Manny_01_N.uasset",
+          "bytes": 7198251
+        },
+        {
+          "path": "Content/Characters/Mannequins/Textures/Manny/T_Manny_01_Tan.uasset",
+          "bytes": 1357770
+        },
+        {
+          "path": "Content/Characters/Mannequins/Textures/Manny/T_Manny_02_ASAOPMASK_MSK.uasset",
+          "bytes": 8341381
+        },
+        {
+          "path": "Content/Characters/Mannequins/Textures/Manny/T_Manny_02_BN.uasset",
+          "bytes": 21139527
+        },
+        {
+          "path": "Content/Characters/Mannequins/Textures/Manny/T_Manny_02_CCRCCPlastic_MSK.uasset",
+          "bytes": 13144043
+        },
+        {
+          "path": "Content/Characters/Mannequins/Textures/Manny/T_Manny_02_D.uasset",
+          "bytes": 9033544
+        },
+        {
+          "path": "Content/Characters/Mannequins/Textures/Manny/T_Manny_02_MSR_MSK.uasset",
+          "bytes": 13677610
+        },
+        {
+          "path": "Content/Characters/Mannequins/Textures/Manny/T_Manny_02_N.uasset",
+          "bytes": 7269335
+        },
+        {
+          "path": "Content/Characters/Mannequins/Textures/Manny/T_Manny_02_Tan.uasset",
+          "bytes": 2153790
+        },
+        {
+          "path": "Content/Characters/Mannequins/Textures/Shared/T_UE_Logo_M.uasset",
+          "bytes": 69960
+        },
+        {
+          "path": "Content/Components/ChaosMoverComponent.uasset",
+          "bytes": 18492
+        },
+        {
+          "path": "Content/Components/DefaultCharacterMoverComponent.uasset",
+          "bytes": 16771
+        },
+        {
+          "path": "Content/Components/DefaultPhysicsCharacterMoverComponent.uasset",
+          "bytes": 17122
+        },
+        {
+          "path": "Content/Components/ExtendedCharacterMoverComponent.uasset",
+          "bytes": 17697
+        },
+        {
+          "path": "Content/Components/ExtendedPhysicsCharacterMoverComponent.uasset",
+          "bytes": 17947
+        },
+        {
+          "path": "Content/Gameplay/AIMannyPawnMoveBehavior.uasset",
+          "bytes": 3568
+        },
+        {
+          "path": "Content/Gameplay/BP_BouncerSphere.uasset",
+          "bytes": 59823
+        },
+        {
+          "path": "Content/Gameplay/BP_ChaosMoverPlatform.uasset",
+          "bytes": 2689
+        },
+        {
+          "path": "Content/Gameplay/BP_ChaosMoverPlatform_Ellipse.uasset",
+          "bytes": 56800
+        },
+        {
+          "path": "Content/Gameplay/BP_ChaosMoverPlatform_Points.uasset",
+          "bytes": 175239
+        },
+        {
+          "path": "Content/Gameplay/BP_ChaosMoverPlatform_Spline.uasset",
+          "bytes": 61986
+        },
+        {
+          "path": "Content/Gameplay/BP_ExternalSplineFollowerPlatform.uasset",
+          "bytes": 62934
+        },
+        {
+          "path": "Content/Gameplay/BP_ExtraMovementInducer.uasset",
+          "bytes": 131627
+        },
+        {
+          "path": "Content/Gameplay/BP_GlobalSpline.uasset",
+          "bytes": 22866
+        },
+        {
+          "path": "Content/Gameplay/BP_MoverPlatform.uasset",
+          "bytes": 35649
+        },
+        {
+          "path": "Content/Gameplay/BP_NpcSpawner.uasset",
+          "bytes": 308426
+        },
+        {
+          "path": "Content/Gameplay/BP_PhasedCollisionObject.uasset",
+          "bytes": 163070
+        },
+        {
+          "path": "Content/Gameplay/BP_RotatingGravityPlatform.uasset",
+          "bytes": 99297
+        },
+        {
+          "path": "Content/Gameplay/BP_SimpleMovingPlatform.uasset",
+          "bytes": 64350
+        },
+        {
+          "path": "Content/Gameplay/BP_SplineFollowerBase.uasset",
+          "bytes": 29888
+        },
+        {
+          "path": "Content/Gameplay/BP_SplineFollowerPlatform.uasset",
+          "bytes": 40150
+        },
+        {
+          "path": "Content/Gameplay/BP_VisualWaypoint.uasset",
+          "bytes": 30075
+        },
+        {
+          "path": "Content/Gameplay/BP_Zipline.uasset",
+          "bytes": 66110
+        },
+        {
+          "path": "Content/Gameplay/Interfaces/ExtendedMannyInterface.uasset",
+          "bytes": 20437
+        },
+        {
+          "path": "Content/Gameplay/LayeredMoves/BP_TestLayeredMoveLogic.uasset",
+          "bytes": 84288
+        },
+        {
+          "path": "Content/Gameplay/MovementModes/BP_AsyncFlyingMode.uasset",
+          "bytes": 587227
+        },
+        {
+          "path": "Content/Gameplay/MovementModes/BP_FlyingMode.uasset",
+          "bytes": 519399
+        },
+        {
+          "path": "Content/Gameplay/MoverExamplesAIController.uasset",
+          "bytes": 20123
+        },
+        {
+          "path": "Content/Gameplay/MoverExamplesAICrowdController.uasset",
+          "bytes": 20461
+        },
+        {
+          "path": "Content/Gameplay/MoverExamplesGameplayUtils.uasset",
+          "bytes": 345483
+        },
+        {
+          "path": "Content/Gameplay/MoverExamples_CharacterGameMode.uasset",
+          "bytes": 19922
+        },
+        {
+          "path": "Content/Gameplay/MoverExamples_PhysicsCharacterGameMode.uasset",
+          "bytes": 29204
+        },
+        {
+          "path": "Content/Gameplay/PhysicsProps/BP_HeavySimulatedBox.uasset",
+          "bytes": 36232
+        },
+        {
+          "path": "Content/Gameplay/PhysicsProps/BP_LightSimulatedBox.uasset",
+          "bytes": 36572
+        },
+        {
+          "path": "Content/Gameplay/PhysicsProps/BP_MediumSimulatedBox.uasset",
+          "bytes": 36693
+        },
+        {
+          "path": "Content/Input/Actions/IA_ADS.uasset",
+          "bytes": 1389
+        },
+        {
+          "path": "Content/Input/Actions/IA_Crouch.uasset",
+          "bytes": 1700
+        },
+        {
+          "path": "Content/Input/Actions/IA_Dash.uasset",
+          "bytes": 1394
+        },
+        {
+          "path": "Content/Input/Actions/IA_Fly.uasset",
+          "bytes": 1389
+        },
+        {
+          "path": "Content/Input/Actions/IA_Jump.uasset",
+          "bytes": 1394
+        },
+        {
+          "path": "Content/Input/Actions/IA_Look.uasset",
+          "bytes": 1846
+        },
+        {
+          "path": "Content/Input/Actions/IA_Move.uasset",
+          "bytes": 1542
+        },
+        {
+          "path": "Content/Input/Actions/IA_StartZipline.uasset",
+          "bytes": 1436
+        },
+        {
+          "path": "Content/Input/Actions/IA_Vault.uasset",
+          "bytes": 1399
+        },
+        {
+          "path": "Content/Input/Mappings/IMC_AdvancedMoverMappingContext.uasset",
+          "bytes": 10614
+        },
+        {
+          "path": "Content/Input/Mappings/IMC_MoverMappingContext.uasset",
+          "bytes": 19513
+        },
+        {
+          "path": "Content/InterpolationCurves/CF_EaseCubic.uasset",
+          "bytes": 5013
+        },
+        {
+          "path": "Content/Maps/L_BasedMovement.umap",
+          "bytes": 419771
+        },
+        {
+          "path": "Content/Maps/L_CharacterMovementBasics.umap",
+          "bytes": 1263738
+        },
+        {
+          "path": "Content/Maps/L_CharacterMovementBasics_BuiltData.uasset",
+          "bytes": 1248192
+        },
+        {
+          "path": "Content/Maps/L_DetourCrowdMovement.umap",
+          "bytes": 191428
+        },
+        {
+          "path": "Content/Maps/L_InstantMovementEffects.umap",
+          "bytes": 618323
+        },
+        {
+          "path": "Content/Maps/L_LayeredMoves.umap",
+          "bytes": 1415733
+        },
+        {
+          "path": "Content/Maps/L_PathedMovement.umap",
+          "bytes": 973907
+        },
+        {
+          "path": "Content/Maps/L_PathfindingMovement.umap",
+          "bytes": 1311923
+        },
+        {
+          "path": "Content/Maps/L_PhysicsSimulatedCharacter.umap",
+          "bytes": 432152
+        },
+        {
+          "path": "Content/Maps/L_ScalingNPCs.umap",
+          "bytes": 180677
+        },
+        {
+          "path": "Content/Maps/L_ScalingNPCs_BuiltData.uasset",
+          "bytes": 2210488
+        },
+        {
+          "path": "Content/Maps/L_TechValidation.umap",
+          "bytes": 943599
+        },
+        {
+          "path": "Content/Maps/L_TeleportingPlatform.umap",
+          "bytes": 482271
+        },
+        {
+          "path": "Content/Materials/MF_ProcGrid.uasset",
+          "bytes": 50061
+        },
+        {
+          "path": "Content/Materials/MI_Collidable.uasset",
+          "bytes": 8962
+        },
+        {
+          "path": "Content/Materials/MI_ExtraMovementInducer.uasset",
+          "bytes": 8546
+        },
+        {
+          "path": "Content/Materials/MI_NonCollidable.uasset",
+          "bytes": 8337
+        },
+        {
+          "path": "Content/Materials/MI_PrototypeGrid_Gray.uasset",
+          "bytes": 13349
+        },
+        {
+          "path": "Content/Materials/MI_WaypointDefault.uasset",
+          "bytes": 9205
+        },
+        {
+          "path": "Content/Materials/MI_WaypointTargeted.uasset",
+          "bytes": 9084
+        },
+        {
+          "path": "Content/Materials/M_PrototypeGrid.uasset",
+          "bytes": 45020
+        },
+        {
+          "path": "Content/Materials/M_Solid_Base.uasset",
+          "bytes": 8601
+        },
+        {
+          "path": "Content/Materials/M_Solid_Base_Green.uasset",
+          "bytes": 13628
+        },
+        {
+          "path": "Content/Materials/M_Solid_Base_Orange.uasset",
+          "bytes": 13467
+        },
+        {
+          "path": "Content/Materials/M_Solid_Base_Red.uasset",
+          "bytes": 12671
+        },
+        {
+          "path": "Content/Materials/M_Translucent_Base.uasset",
+          "bytes": 10994
+        },
+        {
+          "path": "Content/Materials/PhysicsMaterials/PhysMat_Pawn.uasset",
+          "bytes": 1847
+        },
+        {
+          "path": "Content/Meshes/SM_Cube.uasset",
+          "bytes": 18058
+        },
+        {
+          "path": "Content/MotionModel/B_NaiveDampedTurnGenerator.uasset",
+          "bytes": 149304
+        },
+        {
+          "path": "Content/MotionModel/B_SpeedVariantTurnGenerator.uasset",
+          "bytes": 226246
+        },
+        {
+          "path": "Content/Pawns/AnimatedMannyPawn.uasset",
+          "bytes": 93487
+        },
+        {
+          "path": "Content/Pawns/AnimatedMannyPawnExtended.uasset",
+          "bytes": 874707
+        },
+        {
+          "path": "Content/Pawns/BaseAnimatedMannyPawn.uasset",
+          "bytes": 166947
+        },
+        {
+          "path": "Content/Pawns/ChaosMannyPawn.uasset",
+          "bytes": 64942
+        },
+        {
+          "path": "Content/Pawns/ChaosMannyPawnExtended.uasset",
+          "bytes": 699981
+        },
+        {
+          "path": "Content/Pawns/NPCDetourCrowdPawn.uasset",
+          "bytes": 45230
+        },
+        {
+          "path": "Content/Pawns/NPCScalingPawn.uasset",
+          "bytes": 45234
+        },
+        {
+          "path": "Content/Pawns/PathFollowingMannyPawn.uasset",
+          "bytes": 335243
+        },
+        {
+          "path": "Content/Pawns/ScriptedAIMannyPawn.uasset",
+          "bytes": 300435
+        },
+        {
+          "path": "Content/Settings/BaseCharacterNetworkPhysicsSettings_DA.uasset",
+          "bytes": 2461
+        },
+        {
+          "path": "Content/Settings/MoverPlatformNetworkPhysicsSettings_DA.uasset",
+          "bytes": 2359
+        },
+        {
+          "path": "Content/Textures/T_GridChecker_A.uasset",
+          "bytes": 8035
+        },
+        {
+          "path": "Content/Widgets/ControlsDisplay.uasset",
+          "bytes": 311844
+        }
+      ]
+    }
+  },
+  "dependencyPlan": {
+    "status": "planned",
+    "actionCount": 178,
+    "engineMoverPathReferences": 0,
+    "moduleDllOutputs": [
+      "Plugins/ChaosMover/Binaries/Win64/UnrealEditor-ChaosMover.dll",
+      "Plugins/MoverExamples/Binaries/Win64/UnrealEditor-MoverExamples.dll",
+      "Plugins/Mover/Binaries/Win64/UnrealEditor-MoverCVDData.dll",
+      "Plugins/Mover/Binaries/Win64/UnrealEditor-MoverCVDEditor.dll",
+      "Plugins/Mover/Binaries/Win64/UnrealEditor-MoverEditor.dll",
+      "Plugins/Mover/Binaries/Win64/UnrealEditor-Mover.dll"
+    ]
+  }
+}
