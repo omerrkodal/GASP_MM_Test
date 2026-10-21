@@ -94,6 +94,8 @@ Engine/Programs/UnrealBuildTool/*
 ###################
 # Local project tools
 /ProjectResources/Tools/
+/Plugins/VibeUE581860d1833205V1/
+/Plugins/GlooPrint/
 
 # Ignore Audio
 **/Content/Audio/
@@ -115,4 +117,4 @@ Engine/Programs/UnrealBuildTool/*
 # Preserve the complete content of the project-local Mover examples plugin.
 !/Plugins/MoverExamples/Content/**
 !**/Characters/UEFN_Mannequin/Animations/ExperimentalStateMachineData/
-!**/Characters/UEFN_Mannequin/Animations/ExperimentalStateMachineData/**
+!**/Characters/UEFN_Mannequin/Animations/ExperimentalStateMachineData/**
